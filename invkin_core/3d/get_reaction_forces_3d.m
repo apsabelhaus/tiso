@@ -1,7 +1,7 @@
-% get_reaction_forces.m
+% get_reaction_forces_3d.m
 % Copyright Andrew P. Sabelhaus 2018
 
-function [px, py, pz] = get_reaction_forces(coordinates, pinned, m, g)
+function [px, py, pz] = get_reaction_forces_3d(coordinates, pinned, m, g, debugging)
 % get_reaction_forces calculates the external reaction forces on a
 % tensegrity structure under the influence of gravity.
 %
@@ -11,11 +11,12 @@ function [px, py, pz] = get_reaction_forces(coordinates, pinned, m, g)
 % papers by Friesen, Sabelhaus, etc. for more discussion.
 %   
 % Inputs:
-%   coordiantes = 3 x n matrix of the coordinates of each node.
+%   coordinates = 3 x n matrix of the coordinates of each node.
 %   pinned = n x 1 vector, boolean, with 1 = reaction forces exist at that
 %       node (i.e., it is pinned) or with = 0 free floating.
 %   m = n x 1 vector of the mass of each individual node
 %   g = gravitational constant.
+%   debugging = boolean, turns on verbose messaging.
 %
 % Outputs:
 %   px = n x 1 vector of reaction forces in the x direction at each node
@@ -30,6 +31,9 @@ function [px, py, pz] = get_reaction_forces(coordinates, pinned, m, g)
 %   4) solve sum F = 0 and sum M = 0 via linear algebra
 %   5) expand the solution back into the corresponding coordinates of the
 %   nodes.
+
+% A word of caution as of 2018-07-24:
+disp('get_reaction_forces_3d WARNING: there is a sign error somewhere here, the reaction forces are in the opposite direction of what is expected. You could flip the sign of the result or fix the script. but beware in any case.');
 
 %% 1) 
 
@@ -67,6 +71,11 @@ for i=1:n
     end
 end
 
+if debugging
+    s
+    coords_s
+end
+
 
 %% 2)
 
@@ -83,6 +92,10 @@ end
 % com is 3 x 1.
 com = sum(mass_positions, 2) ./ n;
 
+if debugging
+    com
+end
+
 %% 3)
 
 % We're going to sum moments about the origin.
@@ -93,9 +106,13 @@ com = sum(mass_positions, 2) ./ n;
 
 % The moment due to the center of mass (having already evaluated the cross
 % product) is nmg * COM in y or x respectively (there are n point masses)
-mom_com = [ - n * m_tot * g * com(2);
-            - n * m_tot * g * com(1);
+mom_com = [ - m_tot * g * com(2);
+            - m_tot * g * com(1);
               0];
+          
+if debugging
+    mom_com
+end
         
 % The left-hand side consists of the vectors from each force to the COM.
 % Evaluating the cross product, we get the moment due to a force
@@ -116,12 +133,16 @@ mom_reactions_coeff = [  zeros(1, s),    -coords_s(3, :),   coords_s(2,:);
                          coords_s(3,:),   zeros(1, s),     -coords_s(1,:);
                         -coords_s(2,:),   coords_s(1,:),    zeros(1,s)];
 
+if debugging
+    mom_reactions_coeff
+end
+                    
 %% 4)
 
 % Set up the total problem. we need to do the force balance (pretty
 % trivial) to stack with the moment balance
 
-force_com = [ 0; 0; -n * m_tot * g]; % 3 x 1
+force_com = [ 0; 0; -m_tot * g]; % 3 x 1
 % sum the forces along each dimension. Similar to the moments except no
 % coordinates.
 % also is size 3 x 3s
@@ -137,12 +158,56 @@ b = [force_com; mom_com];
 
 % TO-DO: could actually formulate this as a minimization problem since it's
 % statically indeterminate (e.g. nonzero null space, there are *many* more
-% rows than columns since 3s > 6 for almost all applications because at
+% rows than columns since 3s >= 6 for almost all applications because at
 % least two nodes would be pinned), so could minimize the 2-norm of force.
 % Currently unknown if this has any effect on the inverse kinematics
 % solution.
-                    
+
+R = A \ b;
+
+%% 5) 
+
+% Now, R is a 3s x 1 vector of px1 ... pxs, py1 ... pys, pz1 ... pzs
+% We need to redistribute each component back into the appropriate index as
+% per the 'pinned' vector.
+% Let's loop through (again)
+% TO-DO: performance improvements, remove looping.
+% keep a counter for the node to insert
+next_node = 1;
+
+% solutions are
+px = zeros(n, 1);
+py = zeros(n, 1);
+pz = zeros(n, 1);
+
+for i=1:n
+    if pinned(i)
+        % insert the next set of forces from R into the solutions vector
+        % The R vector has the x, y, z, forces stacked in blocks of s.
+        px(i) = R(next_node);
+        py(i) = R(next_node + s);
+        pz(i) = R(next_node + 2*s);
+        % increment counter
+        next_node = next_node + 1;
+    end
 end
+
+% some checking
+if debugging
+    A
+    b
+    R
+    rank(A)
+    rank(b)
+    rank(R)
+    px
+    py
+    pz
+end
+    
+end
+
+
 
 
 

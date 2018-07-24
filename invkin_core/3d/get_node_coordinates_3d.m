@@ -1,7 +1,7 @@
-% get_node_coordinates.m
+% get_node_coordinates_3d.m
 % Copyright Andrew P. Sabelhaus
 
-function [coordinates] = get_node_coordinates(local_frame, state, debugging)
+function [coordinates] = get_node_coordinates_3d(local_frame, state, debugging)
 % get_node_coordinates calculates the coordinates (positions) of each node
 %   for the whole tensegrity structure. For more than 1 rigid body, the
 %   'state' vector implies how many times to copy/translate/rotate the

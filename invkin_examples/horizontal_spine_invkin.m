@@ -99,7 +99,13 @@ pinned = zeros(n, 1);
 % reaction forces / forces inside the rigid bodies' members, so maybe we
 % should check in the future if this makes a difference.
 % for now, let's say all "outer" nodes are fixed.
-pinned( 2:5 ) = 1;
+%pinned( 2:5 ) = 1;
+
+% four reaction forces sets was too many degrees of freedom. Instead, only
+% pin nodes 2 and 3, with the center pinned now also.
+% (note, the linear algebra didn't work out with just nodes 2 and 3, rank
+% issues.)
+pinned( 1:3 ) = 1;
 
 % gravitational constant
 g = 9.81;
@@ -137,6 +143,9 @@ xi(7:12) = [    bar_endpoint * (3/4);
                 pi/2;
                 0];
             
+% Let's translate and rotate the moving vertebra 'up' a bit, to check. 
+% That's 
+            
 if debugging
     xi
 end
@@ -145,7 +154,7 @@ end
 
 % The nodal coordinates (x, y, z)
 % calculate from position trajectory
-coordinates = get_node_coordinates(a, xi, debugging);
+coordinates = get_node_coordinates_3d(a, xi, debugging);
 
 if debugging
     coordinates
@@ -154,9 +163,12 @@ end
 % Reaction forces
 % Using the nodal positions, pinned-node configuration vector, and mass
 % vector. 
-% Outputs px, py, pz. *THIS ASSUMES ACTING IN GRAVITY.
+% Outputs px, py, pz. *THIS ASSUMES ACTING IN GRAVITY in -Z.
 
-p = get_reaction_forces(coordinates, pinned, m);
+[px, py, pz] = get_reaction_forces_3d(coordinates, pinned, m, g, debugging);
+
+% slight hack for now with the sign error:
+px = -px; py = -py; pz = -pz;
 
 %% Solve the inverse kinematics problem
 % invkin_core_3d(x, y, z, px, py, pz, C, s, q_min, debugging}
