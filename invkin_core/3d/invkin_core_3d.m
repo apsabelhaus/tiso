@@ -46,6 +46,10 @@ function [f_opt, q_opt, A, p] = invkin_core_3d(x, y, z, px, py, pz, C, s, q_min,
 %
 %   A = calculated A matrix, provided for debugging if desired.
 
+%% Check if inputs are valid (conformal dimensions of vectors and matrices)
+
+% do this later...
+
 %% First, formulate the constants / parameters for the optimization:
 
 % As aside: we can get the number of nodes and number of members by
