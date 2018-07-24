@@ -156,7 +156,16 @@ end
 % vector. 
 % Outputs px, py, pz. *THIS ASSUMES ACTING IN GRAVITY.
 
+p = get_reaction_forces(coordinates, pinned, m);
+
 %% Solve the inverse kinematics problem
 % invkin_core_3d(x, y, z, px, py, pz, C, s, q_min, debugging}
+
+
+
+
+
+
+
 
 
