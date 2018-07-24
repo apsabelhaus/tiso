@@ -20,7 +20,7 @@ addpath( genpath('../invkin_core') );
 debugging = 1;
 
 % minimum cable force density
-q_min = 2; % units of N/m, depending on m and g
+q_min = 0; % units of N/m, depending on m and g
 
 % Local frame for one rigid body (locations of nodes)
 
@@ -170,13 +170,48 @@ end
 % slight hack for now with the sign error:
 px = -px; py = -py; pz = -pz;
 
+% Add the gravitational reaction forces for each mass.
+for i=1:n
+    pz(i) = pz(i) - m(i)*g;
+end
+
 %% Solve the inverse kinematics problem
 % invkin_core_3d(x, y, z, px, py, pz, C, s, q_min, debugging}
 
+% Split up the coordinates.
+% The invkin core routine expects these to be column vectors, so a
+% transpose is needed also
+x = coordinates(1, :)';
+y = coordinates(2, :)';
+z = coordinates(3, :)';
 
+% Solve
+[f_opt, q_opt, A, p] = invkin_core_3d(x, y, z, px, py, pz, C, s, q_min, debugging);
 
+% For this particular problem, we get the same rank issues as with the 2D
+% structure described in the Sabelhaus 2018 paper on MPC with inverse
+% kinematics: i.e., that since there are 10 nodes and 3 dimensions (nd =
+% 30) whereas there are only 16 members (8 cables, 4 rods per body * 2
+% bodies), the A matrix is overconstrained (30 rows, 16 columns) and no
+% solutions exist.
 
+% In addition, the reduction of this problem to the rigid body model
+% where instead the required A q = p has only 2bd columns (both force and
+% moment for b bodies in 3 dimensions) which here is 12, but only cable
+% forces are considered (s=8), still would have dimensionality issues: 
+% 12 > 8, so that wouldn't necessarily work either.
 
+% The best solution here is to allow for a set of "anchor" points where
+% forces are not considered, and that only provide the coordinates for the
+% force density vector, so that the fixed rigid body is not considered at
+% all and its reaction forces don't need to be calculated. This would lead
+% to an A q = p of (in rigid body form) 8 cables and 6 constraints (force
+% moment in 3d), with the cable force densities just specified by a
+% constant.
+
+% As of 2018-07-24, such an algorithm has not been developed. It's present
+% somewhat in the results from the Friesen 2014 paper although is not
+% discussed at all. TO-DO: implement this.
 
 
 

@@ -1,7 +1,7 @@
 %% invkin_core_3d.m
 % Copyright Andrew P. Sabelhaus 2018
 
-function [f_opt, q_opt, A, p] = invkin_core_3d(x, y, z, px, py, pz, C, s, q_min, debugging}
+function [f_opt, q_opt, A, p] = invkin_core_3d(x, y, z, px, py, pz, C, s, q_min, debugging)
 % invkin_core_3d performs a single inverse kinematics computation for a
 % 3-dimensional tensegrity structure (robot.)
 %
@@ -53,7 +53,7 @@ function [f_opt, q_opt, A, p] = invkin_core_3d(x, y, z, px, py, pz, C, s, q_min,
 %% First, formulate the constants / parameters for the optimization:
 
 % As aside: we can get the number of nodes and number of members by
-n = size(x);
+n = size(x,1);
 r = size(C,1) - s; % rows of C is total number of members, and s is
 % provided.
 
@@ -67,13 +67,16 @@ A = [ C' * diag(C * x);
 p = [px; py; pz];
 
 if debugging
-    disp('Size of A is:');
-    size(A);
+    disp('Size of x, r, C, A is:');
+    n
+    r
+    size(C)
+    size(A)
 end
 
 % Since we assume that the first s rows of C are for the cables, make the
 % constraint for the min force density on those cables:
-q_min_vector = q_min * [ones(s,1); zeros(r,1)];
+q_min_vector = q_min * [ones(s,1); zeros(r,1)]
 
 %% Solve the optimization problem
 
@@ -103,17 +106,31 @@ H(1:s, 1:s) = eye(s);
 
 % no linear term
 f = [];
-% no inequality constraints
-A_ineq = [];
-b_ineq = [];
 
-% the equality constraints are in the form of A_eq * q <= b_eq,
+% the inequality constraints are in the form of A_eq * q <= b_eq,
 % so we need q >= mintensionvec becomes -q <= -mintensionvec
-A_eq = - eye(s + r);
-b_eq = - q_min_vector;
+A_ineq = - eye(s + r);
+b_ineq = - q_min_vector;
+
+% equality constraints are A q = p
+A_eq = A;
+b_eq = p;
+
+if debugging
+    disp('Optimization parameters are:');
+    H
+    f
+    A_eq
+    b_eq
+end
 
 % Call quadprog
 [q_opt] = quadprog(H, f, A_ineq, b_ineq, A_eq, b_eq);
+
+if debugging
+    disp('Optimal force densities are:');
+    q_opt
+end
 
 %% Calculate the cable forces from the force densities.
 
@@ -141,6 +158,11 @@ end
 
 % Then, element-wise calculate the optimal forces.
 f_opt = q_opt .* lengths;
+
+if debugging
+    disp('Optimal forces on cables are:');
+    f_opt
+end
 
 end
 

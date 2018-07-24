@@ -42,14 +42,14 @@ n = size(coordinates, 2);
 
 % number of nodes that have reaction forces. Since 'pinned' is ones and
 % zeros, can just count the number of ones.
-s = sum(pinned);
+v = sum(pinned);
 
 % quick checks
 if size(m) ~= n
     error('Error, mass vector should have same number of elements as the number of nodes.');
 end
 
-if s > n
+if v > n
     error('Error, the vector of pinned nodes is inconsistent with total number of nodes.');
 end
 
@@ -58,22 +58,22 @@ m_tot = sum(m);
 
 % need to remove the no-reaction-forces elements from the 'coordinates'
 % matrix to make computations easier down below.
-% the result should now be 3 x s, reduced from 3 x n
-coords_s = zeros(3, s);
+% the result should now be 3 x v, reduced from 3 x n
+coords_v = zeros(3, v);
 % TO-DO: efficiency improvements. We can't rely on "remove the zeroed-out
 % nodes" because there may be a force applied at a node with coordinates
 % (0, 0, 0). So, keep a counter instead.
 next_node = 1;
 for i=1:n
     if pinned(i)
-        coords_s(:, next_node) = coordinates(:, i);
+        coords_v(:, next_node) = coordinates(:, i);
         next_node = next_node + 1;
     end
 end
 
 if debugging
-    s
-    coords_s
+    v
+    coords_v
 end
 
 
@@ -100,9 +100,9 @@ end
 
 % We're going to sum moments about the origin.
 
-% As a note on matrix dimensions, we're looking at s reaction forces in 3
-% dimensions each, so when solving A R = b, R is 3s x 1, b is 3 x 1, so A
-% must be 3 x 3s.
+% As a note on matrix dimensions, we're looking at v reaction forces in 3
+% dimensions each, so when solving A R = b, R is 3v x 1, b is 3 x 1, so A
+% must be 3 x 3v.
 
 % The moment due to the center of mass (having already evaluated the cross
 % product) is nmg * COM in y or x respectively (there are n point masses)
@@ -121,17 +121,17 @@ end
 %       z,  0,  -x;
 %       -y, x,  0];
 %
-% Since we're treating the reaction forces as R = [Fx1, Fx2, ... Fxs, Fy1,
+% Since we're treating the reaction forces as R = [Fx1, Fx2, ... Fxv, Fy1,
 % ...], we'll do the sum of moments for example in x for all forces as
-% [ 0_s, -z_1 ... -zs, y1 ... ys]
+% [ 0_s, -z_1 ... -zv, y1 ... yv]
 
-% left-hand side size is 3 x 3s
-% insert individual components. coords_s(1, i) is x-coord for node i =
-% 1...s (the ones with reaction forces.)
+% left-hand side size is 3 x 3v
+% insert individual components. coords_v(1, i) is x-coord for node i =
+% 1...v (the ones with reaction forces.)
 
-mom_reactions_coeff = [  zeros(1, s),    -coords_s(3, :),   coords_s(2,:);
-                         coords_s(3,:),   zeros(1, s),     -coords_s(1,:);
-                        -coords_s(2,:),   coords_s(1,:),    zeros(1,s)];
+mom_reactions_coeff = [  zeros(1, v),    -coords_v(3, :),   coords_v(2,:);
+                         coords_v(3,:),   zeros(1, v),     -coords_v(1,:);
+                        -coords_v(2,:),   coords_v(1,:),    zeros(1,v)];
 
 if debugging
     mom_reactions_coeff
@@ -145,10 +145,10 @@ end
 force_com = [ 0; 0; -m_tot * g]; % 3 x 1
 % sum the forces along each dimension. Similar to the moments except no
 % coordinates.
-% also is size 3 x 3s
-force_reactions_coeff = [ ones(1, s),   zeros(1, s),    zeros(1, s);
-                          zeros(1, s),  ones(1, s),     zeros(1, s);
-                          zeros(1, s),  zeros(1, s),    ones(1, s)];
+% also is size 3 x 3v
+force_reactions_coeff = [ ones(1, v),   zeros(1, v),    zeros(1, v);
+                          zeros(1, v),  ones(1, v),     zeros(1, v);
+                          zeros(1, v),  zeros(1, v),    ones(1, v)];
 
 % Then, the left-hand-side and right-hand-side matrices are
 A = [force_reactions_coeff; mom_reactions_coeff];
@@ -158,7 +158,7 @@ b = [force_com; mom_com];
 
 % TO-DO: could actually formulate this as a minimization problem since it's
 % statically indeterminate (e.g. nonzero null space, there are *many* more
-% rows than columns since 3s >= 6 for almost all applications because at
+% rows than columns since 3v >= 6 for almost all applications because at
 % least two nodes would be pinned), so could minimize the 2-norm of force.
 % Currently unknown if this has any effect on the inverse kinematics
 % solution.
@@ -167,7 +167,7 @@ R = A \ b;
 
 %% 5) 
 
-% Now, R is a 3s x 1 vector of px1 ... pxs, py1 ... pys, pz1 ... pzs
+% Now, R is a 3v x 1 vector of px1 ... pxv, py1 ... pyv, pz1 ... pzv
 % We need to redistribute each component back into the appropriate index as
 % per the 'pinned' vector.
 % Let's loop through (again)
@@ -183,10 +183,10 @@ pz = zeros(n, 1);
 for i=1:n
     if pinned(i)
         % insert the next set of forces from R into the solutions vector
-        % The R vector has the x, y, z, forces stacked in blocks of s.
+        % The R vector has the x, y, z, forces stacked in blocks of v.
         px(i) = R(next_node);
-        py(i) = R(next_node + s);
-        pz(i) = R(next_node + 2*s);
+        py(i) = R(next_node + v);
+        pz(i) = R(next_node + 2*v);
         % increment counter
         next_node = next_node + 1;
     end
