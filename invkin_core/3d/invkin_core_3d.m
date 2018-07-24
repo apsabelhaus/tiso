@@ -88,7 +88,15 @@ end
 
 % no weighting any members different than others
 % the 2 is unnecessary here since we only care about argmax
-H = 2 * eye(s + r);
+%H = 2 * eye(s + r);
+
+% ALTERNATIVELY: just weight the cables! This way, we don't care about what
+% the bars have in terms of force, so maybe there's a better minimum for
+% cables-only.
+% So, just have the H matrix = I for the cables, = 0 for the bars.
+H = zeros(s + r);
+H(1:s, 1:s) = eye(s);
+
 % no linear term
 f = [];
 % no inequality constraints
