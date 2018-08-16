@@ -251,7 +251,7 @@ for g = 1:b
     % This has a slightly different shape than "p" above, in order to work
     % well with the moment determinant. Specifically,
     % p_g \in R^{d, eta}
-    p_g = [px_g; pz_g];
+    p_g = [px_g'; pz_g'];
     % The moment due to node m (from m=1:eta) is similar to above, but we
     % don't need to factor out the force itself (can leave in, unlike the
     % force densitites q above, so we're really doing r x F here (in 2D).
