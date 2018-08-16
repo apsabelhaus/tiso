@@ -106,11 +106,11 @@ H_hat = [eye(s), zeros(s, r)];
 
 % Therefore, all the lengths of each cable are:
 dx = H_hat * C * x;
-dz = H_hat * c * z;
+dz = H_hat * C * z;
 
 % Since all cables apply forces to both rigid bodies, and assuming tension
 % is "negative" here, 
-Af = [-dx; dx; -dz; dz];
+Af = [-dx'; dx'; -dz'; dz'];
 % remember, force = length * force density.
   
 % Combine the p vector
@@ -163,8 +163,8 @@ for g = 1:b
         % and -1 at the "to" node. E.g., anchor1 and anchor2.
         % The == operator checks if each element of the matrix has a
         % certain value.
-        from_k = (C == 1);
-        to_k = (C == -1);
+        from = (C == 1);
+        to = (C == -1);
         % HOWEVER, the graph structure of C does NOT account for the
         % "switching" of anchor points between rigid bodies. 
         % For the "first" rigid body, the one with a +1 in C, this makes
@@ -182,7 +182,7 @@ for g = 1:b
         % A "1" is logical true, and since there can only be at most one
         % anchor point (assuming our C is valid and Drew's math ain't
         % wrong, see the justification for these indices below)
-        if( sum( to_k(k, ((g-1)*eta + 1):(g*eta))) == 1)
+        if( sum( to(k, ((g-1)*eta + 1):(g*eta))) == 1)
             % flip.
             if( debugging )
                 disp('Flipping anchors for body')
@@ -190,16 +190,16 @@ for g = 1:b
                 disp('and cable')
                 k
             end
-            temp = from_k;
-            from_k = to_k;
-            to_k = temp;
+            temp = from;
+            from = to;
+            to = temp;
         end
         
         % Remove all but the k-th row of this matrix.
         % By doing so, we've got two vectors that multiply together to get
         % a scalar.
-        from_k = from_k(k, :);
-        to_k = to_k(k,:);
+        from_k = from(k, :);
+        to_k = to(k,:);
 
         % We then know the x and z positions of each anchor.
         x_from_k = from_k * x;

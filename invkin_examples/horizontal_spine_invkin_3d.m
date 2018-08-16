@@ -115,6 +115,7 @@ g = 9.81;
 % let's say each vertebra weighs 0.8 kg. Thta's about 1.7 lbs, which seems
 % right to Drew if motors are included.
 m_i = 0.8;
+% INCORRECT: not dividing. To-Do: what convention to adopt here?
 m = m_i * ones(n, 1);
 
 %% Trajectory of positions
