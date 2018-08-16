@@ -1,8 +1,9 @@
-%% horizontal_spine_invkin.m
+%% horizontal_spine_invkin_3d.m
 % Copyright Andrew P. Sabelhaus 2018
 
 % This script used the tInvKin libraries to calculate the inverse
-% kinematics for a tensegrity spine. As the term is used here, 'spine'
+% kinematics for a tensegrity spine, defined in 3 dimensions. 
+% As the term is used here, 'spine'
 % refers to a structure with repeated rigid bodies of the same geometry and
 % mass.
 
