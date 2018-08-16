@@ -167,15 +167,20 @@ end
 
 % get the center of mass for combined structure (don't need to split by
 % rigid body.)
+% Note here that I've used m_i as per-body not per-node.
+% Probably accidentally changed notation w.r.t. T-CST 2018 paper.
+% 4 nodes per body, so
+m_node = m_i/4;
+
 % first, the positions of each mass:
 mass_positions = zeros(size(coordinates));
 for i=1:n
-    mass_positions(:,i) = m_i * coordinates(:,i);
+    mass_positions(:,i) = m_node * coordinates(:,i);
 end
 
-% center of mass (com) is sum over each row, divide by n.
+% center of mass (com) is sum over each row, divide by total mass.
 % com is 2 x 1.
-com = sum(mass_positions, 2) ./ n;
+com = sum(mass_positions, 2) ./ (m_node*n);
 
 if debugging
     com
@@ -225,10 +230,6 @@ pz(2) = R(2);
 pz(3) = R(4);
 
 % Add the gravitational reaction forces for each mass.
-% Note here that I've used m_i as per-body not per-node.
-% Probably accidentally changed notation w.r.t. T-CST 2018 paper.
-% 4 nodes per body, so
-m_node = m_i/4;
 for i=1:n
     pz(i) = pz(i) - m_node*g;
 end
@@ -244,9 +245,13 @@ z = coordinates(2, :)';
 
 % For the rigid body balance, we need the COMs of each rigid body,
 % not just the COM of the whole structure.
+COMs = zeros(2, b);
+% hard coding here: 4 nodes per body (n=8, b=2, n/b = 4.)
+COMs(:,1) = sum(mass_positions(:, 1:4), 2) / (m_node*4);
+COMs(:,2) = sum(mass_positions(:, 5:8), 2) / (m_node*4);
 
 % Solve
-[f_opt, q_opt, Ab, pb] = invkin_core_2d_rb(x, z, px, pz, C, com, s, b, q_min, debugging);
+[f_opt, q_opt, Ab, pb] = invkin_core_2d_rb(x, z, px, pz, C, COMs, s, b, q_min, debugging);
 
 % For this particular problem, we get the same rank issues as with the 2D
 % structure described in the Sabelhaus 2018 paper on MPC with inverse
