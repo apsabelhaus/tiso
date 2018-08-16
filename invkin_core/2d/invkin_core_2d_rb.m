@@ -142,8 +142,9 @@ pf = collapse * p;
 % loop is more intuitive.
 
 % Calculate the moments for each cable, for each body.
-% Am is rows for each body's x and z sum, \in R^{db x s}
-Am = zeros(d*b, s);
+% Am is rows for each body's x and z sum, \in R^{b x s}
+% (since we only have one moment in 2D.)
+Am = zeros(b, s);
 
 % For each rigid body,
 for g = 1:b
@@ -283,7 +284,7 @@ end
 
 % Since we assume that the first s rows of C are for the cables, make the
 % constraint for the min force density on those cables:
-q_min_vector = q_min * [ones(s,1); zeros(r,1)]
+q_min_vector = q_min * [ones(s,1)];
 
 %% Solve the optimization problem
 
@@ -337,15 +338,14 @@ end
 
 %% Calculate the cable forces from the force densities.
 
-% Forces are density * length, and lengths for each member in each
-% direction are
-dx = C * x;
-dy = C * y;
-dz = C * z;
+% % Forces are density * length, and lengths for each member in each
+% % direction are
+% dx = C * x;
+% dz = C * z;
 
-% so the lengths of each cable are the euclidean norm of each 3-vector.
+% so the lengths of each cable are the euclidean norm of each 2-vector.
 % re-organize:
-length_vecs = [dx'; dy'; dz'];
+length_vecs = [dx'; dz'];
 if debugging
     disp('Member length vectors are:');
     length_vecs
@@ -359,8 +359,15 @@ if debugging
     lengths
 end
 
-% Then, element-wise calculate the optimal forces.
-f_opt = q_opt .* lengths;
+% Then, calculate the optimal forces. (results should be same dim as
+% q_opt.)
+% again, probably some nice linear algebra here (TO-DO: efficiency),
+% but looping is intuitive and I'm busy.
+f_opt = zeros(size(q_opt));
+for k=1:s
+    f_opt(k) = lengths(k) * q_opt(k);
+end
+%f_opt = lengths * q_opt;
 
 if debugging
     disp('Optimal forces on cables are:');
