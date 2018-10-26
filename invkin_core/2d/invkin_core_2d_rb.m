@@ -19,10 +19,6 @@ function [f_opt, q_opt, Ab, pb] = invkin_core_2d_rb(x, z, px, pz, C, COMs, s, b,
 % structure, and calculates cable forces / force densities by minimizing
 % the total force density in the structure.
 %
-% IMPORTANT: this formulation includes a minimization of the forces inside
-% the compression members. For rigid body robots, this might result in
-% sub-optimal solutions (TBD.)
-%
 % (see Schek, Tran, Friesen, etc. for formulation, and my own papers for
 % more discussion on 'inverse kinematics'.)
 %

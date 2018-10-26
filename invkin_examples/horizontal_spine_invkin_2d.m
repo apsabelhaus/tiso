@@ -19,6 +19,8 @@ clc;
 
 % add the core libraries, assumed to be in an adjacent folder.
 addpath( genpath('../invkin_core') );
+% same for the plotting.
+addpath( genpath('../invkin_plotting') );
 
 %% Set up the parameters
 
@@ -26,7 +28,8 @@ addpath( genpath('../invkin_core') );
 debugging = 0;
 
 % minimum cable force density
-q_min = 0; % units of N/m, depending on m and g
+%q_min = 0; % units of N/m, depending on m and g
+q_min = 0.5;
 
 % Local frame for one rigid body (locations of nodes)
 
@@ -104,9 +107,9 @@ xi(3) = -pi/2;
 % for rigid body 2, translate out in the +x direction. Translating by one
 % full body length puts the tips exactly in the same plane, so maybe do it
 % to 3/4 of that length.
-% the length of one vert is bar_endpoint. 
+% the length of one vert is 2 * bar_endpoint. 
 % x-position is coordinate 1.
-xi(4:6) = [     bar_endpoint * (3/4);
+xi(4:6) = [     bar_endpoint * (3/2);
                 0;
                -pi/2];
             
@@ -197,6 +200,7 @@ for i=1:n
     pz(i) = pz(i) - m_node*g;
 end
 
+
 %% Solve the inverse kinematics problem
 %[f_opt, q_opt, Ab, pb] = invkin_core_2d_rb(x, z, px, pz, C, COMs, s, b, q_min, debugging)
 
@@ -238,7 +242,14 @@ COMs(:,2) = sum(mass_positions(:, 5:8), 2) / (m_node*4);
 % opposite direction (< c, not > c.)
 
 
+%% Plot the structure, for reference.
 
+% This should make it easier to visualize the results.
+% Need to specify "how big" we want the bars to be. A good number is
+radius = 0.01; % meters.
+
+% Plot.
+plot_2d_tensegrity_invkin(C, x, z, s, radius);
 
 
 
