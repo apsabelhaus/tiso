@@ -25,7 +25,7 @@ addpath( genpath('../invkin_plotting') );
 %% Set up the parameters
 
 % debugging or not
-debugging = 0;
+debugging = 1;
 
 % minimum cable force density
 %q_min = 0; % units of N/m, depending on m and g

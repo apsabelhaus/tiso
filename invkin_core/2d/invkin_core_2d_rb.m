@@ -74,6 +74,9 @@ n = size(x,1);
 r = size(C,1) - s; % rows of C is total number of members, and s is
 % provided.
 
+% The number of nodes per rigid body is
+eta = n / b;
+
 % For later work, generalize: this is the dimensionality of the problem
 % (2 dimensional.)
 d = 2;
@@ -99,30 +102,49 @@ d = 2;
 % Helper matrix:
 H_hat = [eye(s), zeros(s, r)];
 % ...when multiplied by a vector of all cables, removes the bars.
+% Equivalently, H_hat^\top will right-multiply the A matrices to remove the
+% bars.
+
+% PREVIOUSLY: By hand,
 
 % Therefore, all the lengths of each cable are:
 dx = H_hat * C * x;
 dz = H_hat * C * z;
 
-% Since all cables apply forces to both rigid bodies, and assuming tension
-% is "negative" here, 
-Af = [-dx'; dx'; -dz'; dz'];
-% remember, force = length * force density.
-  
-% Combine the p vector
-p = [px; pz];
+% % Since all cables apply forces to both rigid bodies, and assuming tension
+% % is "negative" here, 
+% Af = [-dx'; dx'; -dz'; dz'];
+% % remember, force = length * force density.
 
-% Now, we can also calculate pf by "collapsing" it down to per-body instead
-% of per-node.
-% The number of nodes per rigid body is
-eta = n / b;
+% NOW: We can actually collapse it in the same way as the external force
+% vector. The dimensions and calculations ctually line up exactly how
+% we want. Think about it like summing over chunks of columns of size eta
+% within the A matrix.
 
 % a matrix to pattern out the collapsation.
 % We could do ones(1, eta) but all Drew's papers use the 'ones' as a column
 % vector, so do that here, and transpose it.
 collapse = kron(eye(d*b), ones(eta, 1)');
 
-% now, we have pf:
+% As in the standard force-density method, calculate the static equilibrium
+% matrix:
+A = [ C' * diag(C * x);
+      C' * diag(C * z)];
+  
+% The Af matrix can then be collapsed to size (2b x s) from size (2n x
+% (s+r))
+Af = collapse * A * H_hat';
+
+if debugging
+    A
+    Af
+end
+  
+% Combine the p vector
+p = [px; pz];
+
+% Now, we can also calculate pf by "collapsing" it down to per-body instead
+% of per-node.
 pf = collapse * p;
 
 % Next, we need the moments. This is significantly more complicated.
