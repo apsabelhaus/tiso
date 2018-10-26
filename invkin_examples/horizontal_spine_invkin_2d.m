@@ -246,7 +246,7 @@ COMs(:,2) = sum(mass_positions(:, 5:8), 2) / (m_node*4);
 
 % This should make it easier to visualize the results.
 % Need to specify "how big" we want the bars to be. A good number is
-radius = 0.01; % meters.
+radius = 0.02; % meters.
 
 % Plot.
 plot_2d_tensegrity_invkin(C, x, z, s, radius);

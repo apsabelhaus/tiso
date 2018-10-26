@@ -82,11 +82,13 @@ bar_color = black;
 % The handles array can be a cell array:
 handles = {};
 
+% We want the nodes to be a bit bigger than the bars.
+node_rad = 2 * rad;
+
 % Labeling the nodes needs to happen with some offset from the point
 % itself, so that the sphere doesn't overtake the point.
-% We'll do the radius plus some constant (since 2* radius isn't a good
-% idea, and just radius still has overlap.)
-label_offset = rad + 0.01;
+% We'll do the radius of the nodes plus some constant
+label_offset = node_rad + 0.02;
 
 % We can also set the color and size of the text.
 label_color = 'k';
@@ -98,10 +100,10 @@ label_size = 14;
 % plot the nodes.
 [sphere_x, sphere_y, sphere_z] = sphere(surf_discretization);
 
-% Each sphere will be at rad*(output of sphere) + position offset.
-x_sphere_outer = rad * sphere_x;
-y_sphere_outer = rad * sphere_y;
-z_sphere_outer = rad * sphere_z;
+% Each sphere will be at rad*(output of sphere) + position offset. 
+x_sphere_outer = node_rad * sphere_x;
+y_sphere_outer = node_rad * sphere_y;
+z_sphere_outer = node_rad * sphere_z;
 
 % Plot spheres at each node.
 for i=1:n
@@ -120,6 +122,7 @@ for i=1:n
     handles{end+1} = text(x(i) + label_offset, z(i) + label_offset, 0, ...
         num2str(i), 'Color', label_color, 'FontSize', label_size);
 end
+
 
 %% Plot the cables
 
@@ -141,6 +144,38 @@ for j=1:s
 end
 
 
+%% Plot the bars
+
+% the last r rows of C.
+% Example, if there are 4 cables and 6 bars, this should be rows 5 through
+% 10 of C. 
+
+for j=(s+1):(s+r)
+    % As with the cables, pick out the nodes that this bar will connect:
+    % A neat MATLAB trick here is to compare a vector with 1 or -1, to get
+    % a true/false vector, then the 'find' command returns the index of the
+    % 'true' element.
+    from_index = find( C(j,:) == 1 );
+    to_index = find( C(j,:) == -1 );
+    % The function get_2d_surface_points takes in each point as a column
+    % vector \in R^3, so:
+    % (and remember we're switching y and z because MATLAB)
+    start_pt = [x(from_index), z(from_index), 0];
+    end_pt = [x(to_index), z(to_index), 0];
+    % Get the inputs for surf-ing this bar
+    [x_cyl, y_cyl, z_cyl] = get_2d_surface_points(rad, surf_discretization, ...
+                surf_length_discretization, start_pt, end_pt);
+    % Finally, plot the bar.
+    handles{end+1} = surf(gca, x_cyl, y_cyl, ...
+        z_cyl, 'LineStyle', 'none', 'edgecolor', bar_color, ...
+        'facecolor', bar_color);
+end
+
+
+%% Some labels
+title('Tensegrity Structure used w/InvKin');
+xlabel('x position (m)');
+ylabel('z position (m)');
 
 %% Cleanup
 
