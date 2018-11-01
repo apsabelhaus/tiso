@@ -211,21 +211,18 @@ disp(rref(Ab2));
 
 % This produces the same result, matching our intuition
 
-%% Case 3: Slightly Perturbed 2-Vertebra Example With Node Alignment
+%% Case 3: 2-Vertebra Example With Node Alignment
 
 % Now we modify the xi vector to align nodes 4+5 with 7+8 (vertebrae tips)
-xn = normrnd(0,pi/180);
-yn = normrnd(0,pi/180);
-zn = normrnd(0,pi/180);
 
 xi3 = zeros(b * 6, 1);
 xi3(4:6) = [0; pi/2; 0];
-xi3(7:12) = [bar_endpoint;
+xi3(7:12) = [2*bar_endpoint;
             0;
             0;
-            0 + xn;
-            pi/2 + yn;
-            0 + zn];
+            0;
+            pi/2;
+            0];
 coordinates3 = get_node_coordinates_3d(a, xi3, debugging);
 x3 = coordinates3(1,:)';
 y3 = coordinates3(2,:)';
