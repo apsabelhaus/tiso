@@ -758,7 +758,11 @@ fprintf(['\nA7 has dimensions ' num2str(dimA7(1)) 'x' num2str(dimA7(2))...
 fprintf('\nRREF of A7 is \n');
 disp(rref(A7));
 
-% Confirmed. See case 6 for conjectures on this structure.
+% Confirmed. See case 6 for conjectures on this structure. Also, after 4
+% vertebrae, this method will always produce wide matrices by virtue of
+% collapsing the problem into body-space, so there are some classes of
+% tensegrities that are conclusively solved by this formulation that cannot
+% be solved by the nodal one.
 
 %% Extra: Connectivity Analysis and Graph Coloring
 % Rigid body analysis from the Cr submatrix
@@ -778,7 +782,7 @@ end
 jLr = jumbleCr'*jumbleCr;
 [Vjr, Djr] = eig(jLr);
 
-% You see the eigenvectors corresponding to the 0 eigenspace are different
-% now because our node labeling is different. This implies given some
-% labeling of which members are cables vs bars, we can always construct the
-% form C = [Cs;Cr] from any arbitrarily constructed C_arb.
+% For higher vertebrae systems, this fails. This is because we actually
+% need to carefully choose a correct basis for the null space of the
+% laplacian to pick off node indices. I'm going to save this observation
+% for later, but I think we can make something good out of it.
