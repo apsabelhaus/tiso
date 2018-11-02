@@ -1,3 +1,11 @@
+%% Current TODO
+% (1) Formally verify moment equation (I'm fairly sure this is correct)
+% (2) Prove/disprove full rank of A for this class of tensegrity
+% (3) Prove/disprove rank deficiency of Ab for this class of tensegrity
+% (4) Write plotting code for 3D systems so we can see what the perturbed
+%     states actually look like
+% (5) Fix copy/paste code and make helper functions when I have time
+
 %% Exposition and Motivation
 
 % The static equilibrium matrix will always admit solutions for our
@@ -15,16 +23,19 @@
 % admit solutions.
 
 % Furthermore, we can also discount the effect of just adding bars into the
-% system. While this is useful for static analysis, this is not useful for
-% dynamic robot systems because they do not add degrees of actuation. Thus,
-% the problem will extend into dynamic analysis infinitely for any spinal
-% robots using this vertebra structure. Otherwise, we could just trivially
-% transform the system into a solvable one by arbitrarily picking points in
-% the middle of bars and designating them as nodes.
+% system. While this increases s+r, this is not useful for dynamic robot
+% systems because they do not add degrees of actuation. Thus, the problem
+% will extend into dynamic analysis infinitely for any spinal robots using
+% this vertebra structure. Otherwise, we could just trivially transform the
+% system into a solvable one by arbitrarily picking points in the middle of
+% bars and designating them as nodes.
 
 % The goal of this analysis is to determine the conditions in which we can
 % design robots with different formulations of equilibrium matrices such
 % that we can abuse rank deficiency and thus produce optimal solutions.
+
+% Stuff to mention: only useful for non-pure tensegrities, systems that
+% have frames, etc.
 
 %% Workspace Setup
 clear all;
@@ -782,7 +793,8 @@ end
 jLr = jumbleCr'*jumbleCr;
 [Vjr, Djr] = eig(jLr);
 
-% For higher vertebrae systems, this fails. This is because we actually
-% need to carefully choose a correct basis for the null space of the
-% laplacian to pick off node indices. I'm going to save this observation
-% for later, but I think we can make something good out of it.
+% For higher vertebrae systems, this doesn't necessarily immediatley work.
+% This is because we actually need to carefully choose a correct basis for
+% the null space of the laplacian to pick off node indices. I'm going to
+% save this observation for later, but I think we can make something good
+% out of it.
