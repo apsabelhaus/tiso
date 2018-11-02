@@ -1,3 +1,31 @@
+%% Exposition and Motivation
+
+% The static equilibrium matrix will always admit solutions for our
+% optimization problem if it is wider than it is tall and tall matrices
+% will still admit solutions if they are rank deficient.
+
+% Certain topologies are thus intractable from standard nodal analysis
+% methods. For example, in the case of our spinal structure, each vertebra
+% consists of 5 nodes, which adds 15 rows in Cartesian space. Each
+% additional vertebra adds 4 bars + 8 cables = 12 members.
+
+% Clearly, the rate at which the dimension of nd space increases with
+% bodies is greater than the rate at which member-space increases, so for
+% spinal tensegrities with this type of structure, we can never certainly
+% admit solutions.
+
+% Furthermore, we can also discount the effect of just adding bars into the
+% system. While this is useful for static analysis, this is not useful for
+% dynamic robot systems because they do not add degrees of actuation. Thus,
+% the problem will extend into dynamic analysis infinitely for any spinal
+% robots using this vertebra structure. Otherwise, we could just trivially
+% transform the system into a solvable one by arbitrarily picking points in
+% the middle of bars and designating them as nodes.
+
+% The goal of this analysis is to determine the conditions in which we can
+% design robots with different formulations of equilibrium matrices such
+% that we can abuse rank deficiency and thus produce optimal solutions.
+
 %% Workspace Setup
 clear all;
 close all;
@@ -36,14 +64,16 @@ d = 3; % Dimension (Cartesian space)
 % The 4 bars in the bottom vertebra take the next four indices
 
 % We now construct C and the corresponding H matrix.
-Cs = [0 1 0 0 0 -1 0 0 0 0
-      0 0 1 0 0 0 -1 0 0 0;
-      0 0 0 1 0 0 0 -1 0 0;
+Cs = [0 1 0 0 0 0 -1 0 0 0;
+      0 0 1 0 0 0 0 -1 0 0;
+      0 0 0 1 0 0 0 0 -1 0;
       0 0 0 0 1 0 0 0 0 -1;
+      
       0 0 0 1 0 0 -1 0 0 0;
       0 0 0 1 0 0 0 -1 0 0;
       0 0 0 0 1 0 -1 0 0 0;
       0 0 0 0 1 0 0 -1 0 0];
+  
 Cr = [1 -1 0 0 0 0 0 0 0 0;
       1 0 -1 0 0 0 0 0 0 0;
       1 0 0 -1 0 0 0 0 0 0;
@@ -149,6 +179,9 @@ disp(rref(Ab));
 % forces acting in one direction on body one must act oppositely in body
 % two. This explains the pairwise linear dependence of the rows.
 
+% Examining the RREF: the 4th vertical cable and 8th saddle cable are
+% force/moment redundant.
+
 %% Case 2: Slightly Perturbed 2-Vertebra Example
 % Now let's run the exact same graph but with a slightly perturbed
 % orientation and perform the same rank analysis.
@@ -209,7 +242,10 @@ fprintf(['\nAb2 has dimensions ' num2str(dimAb2(1)) 'x' num2str(dimAb2(2))...
 fprintf('\nRREF of Ab2 is \n');
 disp(rref(Ab2));
 
-% This produces the same result, matching our intuition
+% This produces the same rank result, matching our intuition. However, note
+% that the form of the RREF for this case is completely different! With
+% some perturbations, all 4 vertical cables are independent, and 2 saddle
+% cables are independent.
 
 %% Case 3: 2-Vertebra Example With Node Alignment
 
@@ -266,12 +302,13 @@ fprintf(['\nAb3 has dimensions ' num2str(dimAb3(1)) 'x' num2str(dimAb3(2))...
 fprintf('\nRREF of Ab3 is \n');
 disp(rref(Ab3));
 
-% Same result. I highly suspect that the rank of Ab is dependent entirely
-% on the rigid geometry of the vertebrae and the choice of nodal routing
-% points. In other words, the rank condition is entirely geometric. I need
-% to prove this.
+% Same result as for Ab1. This isn't super surprising - there's nothing
+% inherently special about lining up the nodes we chose.
 
 %% Case 4: Completely Interfering Vertebrae
+
+% The two vertebrae will be stacked on top of each other.
+
 xi4 = zeros(b * 6, 1);
 xi4(4:6) = [0; pi/2; 0];
 xi4(7:12) = [0;
@@ -323,12 +360,244 @@ fprintf(['\nAb4 has dimensions ' num2str(dimAb4(1)) 'x' num2str(dimAb4(2))...
 fprintf('\nRREF of Ab4 is \n');
 disp(rref(Ab4));
 
-% Unsurprisingly, this matrix drops rank. It's now rank 5. My question is:
-% why doesn't it drop more rank? I need to think about the physical
-% intuition behind this a little. From looking at the Ab matrix, we've
-% seemingly coupled the Z moments and the y forces together, which is why
-% mathematically the rank drops by one. I'm trying to further interpret
-% this statement.
+% Unsurprisingly, this matrix drops rank (it is now rank 4). Based on the
+% RREF, it looks like we're at a singularity where only the saddle cables
+% are contributing to the cable forces required for this configuration. We
+% can't rely on rank reduction in these types of configurations, though,
+% since this isn't physically possible.
+
+%% Case 5: Positional AND Angular Perturbations
+
+% Same as Ab3 but now we add noise to the position of vertebra 2.
+
+xn5p = normrnd(0,bar_endpoint/100);
+yn5p = normrnd(0,bar_endpoint/100);
+zn5p = normrnd(0,bar_endpoint/100);
+
+xn5a = normrnd(0,pi/180);
+yn5a = normrnd(0,pi/180);
+zn5a = normrnd(0,pi/180);
+
+xi5 = zeros(b * 6, 1);
+xi5(4:6) = [0; pi/2; 0];
+xi5(7:12) = [2*bar_endpoint + xn5p;
+            0 + yn5p;
+            0 + zn5p;
+            0 + xn5a;
+            pi/2 + yn5a;
+            0 + zn5a];
+coordinates5 = get_node_coordinates_3d(a, xi5, debugging);
+x5 = coordinates5(1,:)';
+y5 = coordinates5(2,:)';
+z5 = coordinates5(3,:)';
+[px5, py5, pz5] = get_reaction_forces_3d(coordinates5, pinned, m, g, debugging);
+px5 = -px5; py5 = -py5; pz5 = -pz5;
+for i=1:n
+    pz5(i) = pz5(i) - m(i)*g;
+end
+p5 = [px5;py5;pz5];
+
+Ao5 = [C'*diag(C*x5);
+       C'*diag(C*y5);
+       C'*diag(C*z5)]; % intermediate matrix
+Af5 = kron(eye(d*b),ones(1,eta))*Ao5*Hs';
+pf5 = kron(eye(d*b),ones(1,eta))*p;
+
+R5 = diag(x5);
+S5 = diag(y5);
+T5 = diag(z5);
+
+M5 = [zeros(n) -T5         S5;
+     T5          zeros(n) -R5;
+     -S5         R5          zeros(n)];
+ 
+Am5 = kron(eye(d*b),ones(1,eta))*M5*Ao5*Hs';
+pm5 = kron(eye(d*b),ones(1,eta))*M5*p5;
+
+Ab5 = [Af5;Am5];
+pb5 = [pf5;pm5];
+
+rankAb5 = rank(Ab5);
+dimAb5 = size(Ab5);
+
+fprintf('Ab5 is: \n');
+disp(Ab5);
+fprintf('pb5 is: \n');
+disp(pb5);
+fprintf(['\nAb5 has dimensions ' num2str(dimAb5(1)) 'x' num2str(dimAb5(2))...
+      ' and rank ' num2str(rankAb5) '.\n']);
+fprintf('\nRREF of Ab5 is \n');
+disp(rref(Ab5));
+
+% As expected, the perturbations don't really affect the rank because
+% forces/moments acting on one vertebra affect the other.
+
+%% Case 6: 3-Vertebra Setup, Extension of Drew's Reference
+
+% Coupling is easy to observe in the first case, but now we want to extend
+% our analysis to more vertebrae to see if we can make any generalized
+% statements. We add noise, too.
+
+s = 16;
+r = 12;
+n = 15;
+b = 3;
+eta = n/b;
+d = 3;
+
+Cs = [0 1 0 0 0 0 -1 0 0 0 0 0 0 0 0; % Verticals
+      0 0 1 0 0 0 0 -1 0 0 0 0 0 0 0;
+      0 0 0 1 0 0 0 0 -1 0 0 0 0 0 0;
+      0 0 0 0 1 0 0 0 0 -1 0 0 0 0 0;
+      0 0 0 0 0 0 1 0 0 0 0 -1 0 0 0;
+      0 0 0 0 0 0 0 1 0 0 0 0 -1 0 0;
+      0 0 0 0 0 0 0 0 1 0 0 0 0 -1 0;
+      0 0 0 0 0 0 0 0 0 1 0 0 0 0 -1;
+      
+      0 0 0 1 0 0 -1 0 0 0 0 0 0 0 0; % Saddles
+      0 0 0 1 0 0 0 -1 0 0 0 0 0 0 0;
+      0 0 0 0 1 0 -1 0 0 0 0 0 0 0 0;
+      0 0 0 0 1 0 0 -1 0 0 0 0 0 0 0;
+      0 0 0 0 0 0 0 0 1 0 0 -1 0 0 0;
+      0 0 0 0 0 0 0 0 1 0 0 0 -1 0 0;
+      0 0 0 0 0 0 0 0 0 1 0 -1 0 0 0;
+      0 0 0 0 0 0 0 0 0 1 0 0 -1 0 0];
+  
+Cr = [1 -1 0 0 0 0 0 0 0 0 0 0 0 0 0; % Body 1 bars
+      1 0 -1 0 0 0 0 0 0 0 0 0 0 0 0;
+      1 0 0 -1 0 0 0 0 0 0 0 0 0 0 0;
+      1 0 0 0 -1 0 0 0 0 0 0 0 0 0 0;
+      
+      0 0 0 0 0 1 -1 0 0 0 0 0 0 0 0; % Body 2 bars
+      0 0 0 0 0 1 0 -1 0 0 0 0 0 0 0;
+      0 0 0 0 0 1 0 0 -1 0 0 0 0 0 0;
+      0 0 0 0 0 1 0 0 0 -1 0 0 0 0 0;
+      
+      0 0 0 0 0 0 0 0 0 0 1 -1 0 0 0; % Body 3 bars
+      0 0 0 0 0 0 0 0 0 0 1 0 -1 0 0;
+      0 0 0 0 0 0 0 0 0 0 1 0 0 -1 0;
+      0 0 0 0 0 0 0 0 0 0 1 0 0 0 -1];
+C = [Cs;Cr];
+Hs = [eye(s) zeros(s,r)];
+
+pinned = zeros(n, 1);
+pinned(1:3) = 1;
+m_b = 0.8;
+m6 = m_b/eta * ones(n, 1);
+
+% Noise vectors by body
+xn6p2 = normrnd(0,bar_endpoint/100);
+yn6p2 = normrnd(0,bar_endpoint/100);
+zn6p2 = normrnd(0,bar_endpoint/100);
+
+xn6a2 = normrnd(0,pi/180);
+yn6a2 = normrnd(0,pi/180);
+zn6a2 = normrnd(0,pi/180);
+
+xn6p3 = normrnd(0,bar_endpoint/100);
+yn6p3 = normrnd(0,bar_endpoint/100);
+zn6p3 = normrnd(0,bar_endpoint/100);
+
+xn6a3 = normrnd(0,pi/180);
+yn6a3 = normrnd(0,pi/180);
+zn6a3 = normrnd(0,pi/180);
+
+xi6 = zeros(b * 6, 1);
+xi6(4:6) = [0; pi/2; 0];
+xi6(7:12) = [2*bar_endpoint + xn6p2;
+            0 + yn6p2;
+            0 + zn6p2;
+            0 + xn6a2;
+            pi/2 + yn6a2;
+            0 + zn6a2];
+xi6(13:18) = [4*bar_endpoint + xn6p3;
+            0 + yn6p3;
+            0 + zn6p3;
+            0 + xn6a3;
+            pi/2 + yn6a3;
+            0 + zn6a3];
+coordinates6 = get_node_coordinates_3d(a, xi6, debugging);
+x6 = coordinates6(1,:)';
+y6 = coordinates6(2,:)';
+z6 = coordinates6(3,:)';
+[px6, py6, pz6] = get_reaction_forces_3d(coordinates6, pinned, m6, g, debugging);
+px6 = -px6; py6 = -py6; pz6 = -pz6;
+for i=1:n
+    pz6(i) = pz6(i) - m6(i)*g;
+end
+p6 = [px6;py6;pz6];
+
+Ao6 = [C'*diag(C*x6);
+       C'*diag(C*y6);
+       C'*diag(C*z6)]; % intermediate matrix
+Af6 = kron(eye(d*b),ones(1,eta))*Ao6*Hs';
+pf6 = kron(eye(d*b),ones(1,eta))*p6;
+
+R6 = diag(x6);
+S6 = diag(y6);
+T6 = diag(z6);
+
+M6 = [zeros(n) -T6         S6;
+     T6          zeros(n) -R6;
+     -S6         R6          zeros(n)];
+ 
+Am6 = kron(eye(d*b),ones(1,eta))*M6*Ao6*Hs';
+pm6 = kron(eye(d*b),ones(1,eta))*M6*p6;
+
+Ab6 = [Af6;Am6];
+pb6 = [pf6;pm6];
+
+rankAb6 = rank(Ab6);
+dimAb6 = size(Ab6);
+
+fprintf('Ab6 is: \n');
+disp(Ab6);
+fprintf('pb6 is: \n');
+disp(pb6);
+fprintf(['\nAb6 has dimensions ' num2str(dimAb6(1)) 'x' num2str(dimAb6(2))...
+      ' and rank ' num2str(rankAb6) '.\n']);
+fprintf('\nRREF of Ab6 is \n');
+disp(rref(Ab6));
+
+% Comparing to A6, which is the nodal static equilibrium matrix
+A6 = [C'*diag(C*x6);
+      C'*diag(C*y6);
+      C'*diag(C*z6)];
+rankA6 = rank(A6);
+dimA6 = size(A6);
+
+fprintf('A6 is: \n');
+disp(A6);
+fprintf('p6 is: \n');
+disp(p6);
+fprintf(['\nA6 has dimensions ' num2str(dimA6(1)) 'x' num2str(dimA6(2))...
+      ' and rank ' num2str(rankA6) '.\n']);
+fprintf('\nRREF of A6 is \n');
+disp(rref(A6));
+
+% Now this is very interesting... the rank deficiency of the 3 vertebra
+% case is now 4, whereas for the 2 vertebra case it was 2. 2/4 of the
+% saddle cables between each pair of bodies become force/moment redundant.
+
+% CONJECTURE: for this class of spinal tensegrities, the rigid body
+% reformulation will ALWAYS admit solutions for our force density
+% optimization problem where the nodal method NEVER will. We can see that
+% the nodal matrix retains full rank, just like in the 2-vertebra case. The
+% rank deficiency of a spinal tensegrity of this form will always be
+% 2*(b-1).
+
+% Something that I also suspect: the rank deficiency of this system will
+% always be equal to 6b-s. 6b because we have 6 equations for the
+% kinematics of a rigid body in Cartesian space and I suspect that we need
+% 6 linearly independent forces (not force or moment-redundant in Cartesian
+% space) to physically span that space.
+
+% By generality, I expect that adding more vertebrae to the system doesn't
+% change the rank relations here, and it seems like the only way we can
+% drop rank is by some physically impossible request. These initial results
+% suggest that this could be a very promising method.
+
+
 
 %% Extra: Connectivity Analysis and Graph Coloring
 % Rigid body analysis from the Cr submatrix
