@@ -64,21 +64,22 @@ d = 3; % Dimension (Cartesian space)
 % The 4 bars in the bottom vertebra take the next four indices
 
 % We now construct C and the corresponding H matrix.
-Cs = [0 1 0 0 0 0 -1 0 0 0;
+Cs = [0 1 0 0 0 0 -1 0 0 0; % vertical cables
       0 0 1 0 0 0 0 -1 0 0;
       0 0 0 1 0 0 0 0 -1 0;
       0 0 0 0 1 0 0 0 0 -1;
       
-      0 0 0 1 0 0 -1 0 0 0;
+      0 0 0 1 0 0 -1 0 0 0; % saddle cables
       0 0 0 1 0 0 0 -1 0 0;
       0 0 0 0 1 0 -1 0 0 0;
       0 0 0 0 1 0 0 -1 0 0];
-  
-Cr = [1 -1 0 0 0 0 0 0 0 0;
+
+Cr = [1 -1 0 0 0 0 0 0 0 0; % body 1
       1 0 -1 0 0 0 0 0 0 0;
       1 0 0 -1 0 0 0 0 0 0;
       1 0 0 0 -1 0 0 0 0 0;
-      0 0 0 0 0 1 -1 0 0 0;
+      
+      0 0 0 0 0 1 -1 0 0 0; % body 2
       0 0 0 0 0 1 0 -1 0 0;
       0 0 0 0 0 1 0 0 -1 0;
       0 0 0 0 0 1 0 0 0 -1];
@@ -582,16 +583,10 @@ disp(rref(A6));
 % CONJECTURE: for this class of spinal tensegrities, the rigid body
 % reformulation will ALWAYS admit solutions for our force density
 % optimization problem where the nodal method NEVER will. We can see that
-% the nodal matrix retains full rank, just like in the 2-vertebra case. The
-% rank deficiency of a spinal tensegrity of this form will always be
-% 2*(b-1).
+% the nodal matrix retains full rank, just like in the 2-vertebra case.
 
-% Something that I also suspect: the rank deficiency of rigid body matrix
-% Ab will of general rigid body systems will always be equal to 6b-s. 6b
-% because we have 6 equations for the kinematics of a rigid body in
-% Cartesian space and I suspect that we need 6 linearly independent forces
-% (not force or moment-redundant in Cartesian space) to physically span
-% that space.
+% CONJECTURE: The rank deficiency of a spinal tensegrity of this form will
+% always be 2*(b-1).
 
 % By generality, I expect that adding more vertebrae to the system doesn't
 % change the rank relations here, and it seems like the only way we can
