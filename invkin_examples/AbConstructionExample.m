@@ -593,7 +593,172 @@ disp(rref(A6));
 % drop rank is by some physically impossible request. These initial results
 % suggest that this could be a very promising method.
 
+%% Case 7: 4-Vertebra Setup
+% Just confirming that rank conjectures hold for one more vertebra
+s = 24;
+r = 16;
+n = 20;
+b = 4;
+eta = n/b;
+d = 3;
 
+Cs = [0 1 0 0 0 0 -1 0 0 0 0 0 0 0 0 0 0 0 0 0; % Verticals
+      0 0 1 0 0 0 0 -1 0 0 0 0 0 0 0 0 0 0 0 0;
+      0 0 0 1 0 0 0 0 -1 0 0 0 0 0 0 0 0 0 0 0;
+      0 0 0 0 1 0 0 0 0 -1 0 0 0 0 0 0 0 0 0 0;
+      0 0 0 0 0 0 1 0 0 0 0 -1 0 0 0 0 0 0 0 0;
+      0 0 0 0 0 0 0 1 0 0 0 0 -1 0 0 0 0 0 0 0;
+      0 0 0 0 0 0 0 0 1 0 0 0 0 -1 0 0 0 0 0 0;
+      0 0 0 0 0 0 0 0 0 1 0 0 0 0 -1 0 0 0 0 0;
+      0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 -1 0 0 0;
+      0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 -1 0 0;
+      0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 -1 0;
+      0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 -1;
+      
+      0 0 0 1 0 0 -1 0 0 0 0 0 0 0 0 0 0 0 0 0; % Saddles
+      0 0 0 1 0 0 0 -1 0 0 0 0 0 0 0 0 0 0 0 0;
+      0 0 0 0 1 0 -1 0 0 0 0 0 0 0 0 0 0 0 0 0;
+      0 0 0 0 1 0 0 -1 0 0 0 0 0 0 0 0 0 0 0 0;
+      0 0 0 0 0 0 0 0 1 0 0 -1 0 0 0 0 0 0 0 0;
+      0 0 0 0 0 0 0 0 1 0 0 0 -1 0 0 0 0 0 0 0;
+      0 0 0 0 0 0 0 0 0 1 0 -1 0 0 0 0 0 0 0 0;
+      0 0 0 0 0 0 0 0 0 1 0 0 -1 0 0 0 0 0 0 0;
+      0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 -1 0 0 0;
+      0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 -1 0 0;
+      0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 -1 0 0 0;
+      0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 -1 0 0];
+  
+Cr = [1 -1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0; % Body 1 bars
+      1 0 -1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0;
+      1 0 0 -1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0;
+      1 0 0 0 -1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0;
+      
+      0 0 0 0 0 1 -1 0 0 0 0 0 0 0 0 0 0 0 0 0; % Body 2 bars
+      0 0 0 0 0 1 0 -1 0 0 0 0 0 0 0 0 0 0 0 0;
+      0 0 0 0 0 1 0 0 -1 0 0 0 0 0 0 0 0 0 0 0;
+      0 0 0 0 0 1 0 0 0 -1 0 0 0 0 0 0 0 0 0 0;
+      
+      0 0 0 0 0 0 0 0 0 0 1 -1 0 0 0 0 0 0 0 0; % Body 3 bars
+      0 0 0 0 0 0 0 0 0 0 1 0 -1 0 0 0 0 0 0 0;
+      0 0 0 0 0 0 0 0 0 0 1 0 0 -1 0 0 0 0 0 0;
+      0 0 0 0 0 0 0 0 0 0 1 0 0 0 -1 0 0 0 0 0;
+      
+      0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 -1 0 0 0; % Body 4 bars
+      0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 -1 0 0;
+      0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 -1 0;
+      0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 -1];
+C = [Cs;Cr];
+Hs = [eye(s) zeros(s,r)];
+
+pinned = zeros(n, 1);
+pinned(1:3) = 1;
+m_b = 0.8;
+m7 = m_b/eta * ones(n, 1);
+
+% Noise vectors by body
+xn7p2 = normrnd(0,bar_endpoint/100);
+yn7p2 = normrnd(0,bar_endpoint/100);
+zn7p2 = normrnd(0,bar_endpoint/100);
+
+xn7a2 = normrnd(0,pi/180);
+yn7a2 = normrnd(0,pi/180);
+zn7a2 = normrnd(0,pi/180);
+
+xn7p3 = normrnd(0,bar_endpoint/100);
+yn7p3 = normrnd(0,bar_endpoint/100);
+zn7p3 = normrnd(0,bar_endpoint/100);
+
+xn7a3 = normrnd(0,pi/180);
+yn7a3 = normrnd(0,pi/180);
+zn7a3 = normrnd(0,pi/180);
+
+xn7p4 = normrnd(0,bar_endpoint/100);
+yn7p4 = normrnd(0,bar_endpoint/100);
+zn7p4 = normrnd(0,bar_endpoint/100);
+
+xn7a4 = normrnd(0,pi/180);
+yn7a4 = normrnd(0,pi/180);
+zn7a4 = normrnd(0,pi/180);
+
+xi7 = zeros(b * 6, 1);
+xi7(4:6) = [0; pi/2; 0];
+xi7(7:12) = [2*bar_endpoint + xn7p2;
+            0 + yn7p2;
+            0 + zn7p2;
+            0 + xn7a2;
+            pi/2 + yn7a2;
+            0 + zn7a2];
+xi7(13:18) = [4*bar_endpoint + xn7p3;
+            0 + yn7p3;
+            0 + zn7p3;
+            0 + xn7a3;
+            pi/2 + yn7a3;
+            0 + zn7a3];
+xi7(19:24) = [6*bar_endpoint + xn7p4;
+            0 + yn7p4;
+            0 + zn7p4;
+            0 + xn7a4;
+            pi/2 + yn7a4;
+            0 + zn7a4];
+coordinates7 = get_node_coordinates_3d(a, xi7, debugging);
+x7 = coordinates7(1,:)';
+y7 = coordinates7(2,:)';
+z7 = coordinates7(3,:)';
+[px7, py7, pz7] = get_reaction_forces_3d(coordinates7, pinned, m7, g, debugging);
+px7 = -px7; py7 = -py7; pz7 = -pz7;
+for i=1:n
+    pz7(i) = pz7(i) - m7(i)*g;
+end
+p7 = [px7;py7;pz7];
+
+Ao7 = [C'*diag(C*x7);
+       C'*diag(C*y7);
+       C'*diag(C*z7)]; % intermediate matrix
+Af7 = kron(eye(d*b),ones(1,eta))*Ao7*Hs';
+pf7 = kron(eye(d*b),ones(1,eta))*p7;
+
+R7 = diag(x7);
+S7 = diag(y7);
+T7 = diag(z7);
+
+M7 = [zeros(n) -T7         S7;
+     T7          zeros(n) -R7;
+     -S7         R7          zeros(n)];
+ 
+Am7 = kron(eye(d*b),ones(1,eta))*M7*Ao7*Hs';
+pm7 = kron(eye(d*b),ones(1,eta))*M7*p7;
+
+Ab7 = [Af7;Am7];
+pb7 = [pf7;pm7];
+
+rankAb7 = rank(Ab7);
+dimAb7 = size(Ab7);
+
+fprintf('Ab7 is: \n');
+disp(Ab7);
+fprintf('pb7 is: \n');
+disp(pb7);
+fprintf(['\nAb7 has dimensions ' num2str(dimAb7(1)) 'x' num2str(dimAb7(2))...
+      ' and rank ' num2str(rankAb7) '.\n']);
+fprintf('\nRREF of Ab7 is \n');
+disp(rref(Ab7));
+
+A7 = [C'*diag(C*x7);
+      C'*diag(C*y7);
+      C'*diag(C*z7)];
+rankA7 = rank(A7);
+dimA7 = size(A7);
+
+fprintf('A7 is: \n');
+disp(A7);
+fprintf('p7 is: \n');
+disp(p7);
+fprintf(['\nA7 has dimensions ' num2str(dimA7(1)) 'x' num2str(dimA7(2))...
+      ' and rank ' num2str(rankA7) '.\n']);
+fprintf('\nRREF of A7 is \n');
+disp(rref(A7));
+
+% Confirmed. See case 6 for conjectures on this structure.
 
 %% Extra: Connectivity Analysis and Graph Coloring
 % Rigid body analysis from the Cr submatrix
