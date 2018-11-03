@@ -4,7 +4,6 @@
 % (3) Prove/disprove rank deficiency of Ab for this class of tensegrity
 % (4) Write plotting code for 3D systems so we can see what the perturbed
 %     states actually look like
-% (5) Fix copy/paste code and make helper functions when I have time
 
 %% Exposition and Motivation
 
@@ -75,27 +74,8 @@ d = 3; % Dimension (Cartesian space)
 % The 4 bars in the bottom vertebra take the next four indices
 
 % We now construct C and the corresponding H matrix.
-Cs = [0 1 0 0 0 0 -1 0 0 0; % vertical cables
-      0 0 1 0 0 0 0 -1 0 0;
-      0 0 0 1 0 0 0 0 -1 0;
-      0 0 0 0 1 0 0 0 0 -1;
-      
-      0 0 0 1 0 0 -1 0 0 0; % saddle cables
-      0 0 0 1 0 0 0 -1 0 0;
-      0 0 0 0 1 0 -1 0 0 0;
-      0 0 0 0 1 0 0 -1 0 0];
-
-Cr = [1 -1 0 0 0 0 0 0 0 0; % body 1
-      1 0 -1 0 0 0 0 0 0 0;
-      1 0 0 -1 0 0 0 0 0 0;
-      1 0 0 0 -1 0 0 0 0 0;
-      
-      0 0 0 0 0 1 -1 0 0 0; % body 2
-      0 0 0 0 0 1 0 -1 0 0;
-      0 0 0 0 0 1 0 0 -1 0;
-      0 0 0 0 0 1 0 0 0 -1];
-C = [Cs;Cr];
-Hs = [eye(s) zeros(s,r)];
+C = get_spine_C_3d(b);
+[Hs,~] = get_H(s,r);
 
 %% Case 1: Drew's Example Reference Setup
 
@@ -135,35 +115,17 @@ px = -px; py = -py; pz = -pz;
 for i=1:n
     pz(i) = pz(i) - m(i)*g;
 end
-p = [px;py;pz];
 
-% ***Force and Moment Expressions***
-
-% Finding Af and pf
-Ao = [C'*diag(C*x);
-      C'*diag(C*y);
-      C'*diag(C*z)]; % intermediate matrix
+Ao = get_A(C,x,y,z);
 Af = kron(eye(d*b),ones(1,eta))*Ao*Hs';
-pf = kron(eye(d*b),ones(1,eta))*p;
 
-% Finding Am and Pm
-
-% Use these definitions because we are considering the static case. We
-% don't subtract a reference coordinate from every value, which would
-% probably coincide with the center of mass.
-R = diag(x);
-S = diag(y);
-T = diag(z);
-
-M = [zeros(n) -T         S;
-     T          zeros(n) -R;
-     -S         R          zeros(n)];
+M = get_M(n,x,y,z);
  
-Am = kron(eye(d*b),ones(1,eta))*M*Ao*Hs';
-pm = kron(eye(d*b),ones(1,eta))*M*p;
+Ab = get_Ab(d,b,n,Ao,M,Hs);
 
-% Combine
-Ab = [Af;Am];
+p = [px;py;pz];
+pf = kron(eye(d*b),ones(1,eta))*p;
+pm = kron(eye(d*b),ones(1,eta))*M*p;
 pb = [pf;pm];
 
 % ***Analysis***
@@ -220,26 +182,17 @@ px2 = -px2; py2 = -py2; pz2 = -pz2;
 for i=1:n
     pz2(i) = pz2(i) - m(i)*g;
 end
-p2 = [px2;py2;pz2];
 
-Ao2 = [C'*diag(C*x2);
-       C'*diag(C*y2);
-       C'*diag(C*z2)]; % intermediate matrix
+Ao2 = get_A(C,x2,y2,z2);
 Af2 = kron(eye(d*b),ones(1,eta))*Ao2*Hs';
-pf2 = kron(eye(d*b),ones(1,eta))*p;
 
-R2 = diag(x2);
-S2 = diag(y2);
-T2 = diag(z2);
-
-M2 = [zeros(n) -T2         S2;
-     T2          zeros(n) -R2;
-     -S2         R2          zeros(n)];
+M2 = get_M(n,x2,y2,z2);
  
-Am2 = kron(eye(d*b),ones(1,eta))*M2*Ao2*Hs';
-pm2 = kron(eye(d*b),ones(1,eta))*M2*p2;
+Ab2 = get_Ab(d,b,n,Ao2,M2,Hs);
 
-Ab2 = [Af2;Am2];
+p2 = [px2;py2;pz2];
+pf2 = kron(eye(d*b),ones(1,eta))*p2;
+pm2 = kron(eye(d*b),ones(1,eta))*M2*p2;
 pb2 = [pf2;pm2];
 
 rankAb2 = rank(Ab2);
@@ -280,26 +233,17 @@ px3 = -px3; py3 = -py3; pz3 = -pz3;
 for i=1:n
     pz3(i) = pz3(i) - m(i)*g;
 end
-p3 = [px3;py3;pz3];
 
-Ao3 = [C'*diag(C*x3);
-       C'*diag(C*y3);
-       C'*diag(C*z3)]; % intermediate matrix
+Ao3 = get_A(C,x3,y3,z3);
 Af3 = kron(eye(d*b),ones(1,eta))*Ao3*Hs';
-pf3 = kron(eye(d*b),ones(1,eta))*p;
 
-R3 = diag(x3);
-S3 = diag(y3);
-T3 = diag(z3);
-
-M3 = [zeros(n) -T3         S3;
-     T3          zeros(n) -R3;
-     -S3         R3          zeros(n)];
+M3 = get_M(n,x3,y3,z3);
  
-Am3 = kron(eye(d*b),ones(1,eta))*M3*Ao3*Hs';
-pm3 = kron(eye(d*b),ones(1,eta))*M3*p3;
+Ab3 = get_Ab(d,b,n,Ao3,M3,Hs);
 
-Ab3 = [Af3;Am3];
+p3 = [px3;py3;pz3];
+pf3 = kron(eye(d*b),ones(1,eta))*p3;
+pm3 = kron(eye(d*b),ones(1,eta))*M3*p3;
 pb3 = [pf3;pm3];
 
 rankAb3 = rank(Ab3);
@@ -338,26 +282,17 @@ px4 = -px4; py4 = -py4; pz4 = -pz4;
 for i=1:n
     pz4(i) = pz4(i) - m(i)*g;
 end
-p4 = [px4;py4;pz4];
 
-Ao4 = [C'*diag(C*x4);
-       C'*diag(C*y4);
-       C'*diag(C*z4)]; % intermediate matrix
+Ao4 = get_A(C,x4,y4,z4);
 Af4 = kron(eye(d*b),ones(1,eta))*Ao4*Hs';
-pf4 = kron(eye(d*b),ones(1,eta))*p;
 
-R4 = diag(x4);
-S4 = diag(y4);
-T4 = diag(z4);
-
-M4 = [zeros(n) -T4         S4;
-     T4          zeros(n) -R4;
-     -S4         R4          zeros(n)];
+M4 = get_M(n,x4,y4,z4);
  
-Am4 = kron(eye(d*b),ones(1,eta))*M4*Ao4*Hs';
-pm4 = kron(eye(d*b),ones(1,eta))*M4*p4;
+Ab4 = get_Ab(d,b,n,Ao4,M4,Hs);
 
-Ab4 = [Af4;Am4];
+p4 = [px4;py4;pz4];
+pf4 = kron(eye(d*b),ones(1,eta))*p4;
+pm4 = kron(eye(d*b),ones(1,eta))*M4*p4;
 pb4 = [pf4;pm4];
 
 rankAb4 = rank(Ab4);
@@ -382,23 +317,8 @@ disp(rref(Ab4));
 
 % Same as Ab3 but now we add noise to the position of vertebra 2.
 
-xn5p = normrnd(0,bar_endpoint/100);
-yn5p = normrnd(0,bar_endpoint/100);
-zn5p = normrnd(0,bar_endpoint/100);
+coordinates5 = noisy_coordinate_generator(a,b,bar_endpoint,bar_endpoint/100,pi/180,debugging);
 
-xn5a = normrnd(0,pi/180);
-yn5a = normrnd(0,pi/180);
-zn5a = normrnd(0,pi/180);
-
-xi5 = zeros(b * 6, 1);
-xi5(4:6) = [0; pi/2; 0];
-xi5(7:12) = [2*bar_endpoint + xn5p;
-            0 + yn5p;
-            0 + zn5p;
-            0 + xn5a;
-            pi/2 + yn5a;
-            0 + zn5a];
-coordinates5 = get_node_coordinates_3d(a, xi5, debugging);
 x5 = coordinates5(1,:)';
 y5 = coordinates5(2,:)';
 z5 = coordinates5(3,:)';
@@ -407,26 +327,16 @@ px5 = -px5; py5 = -py5; pz5 = -pz5;
 for i=1:n
     pz5(i) = pz5(i) - m(i)*g;
 end
-p5 = [px5;py5;pz5];
-
-Ao5 = [C'*diag(C*x5);
-       C'*diag(C*y5);
-       C'*diag(C*z5)]; % intermediate matrix
+Ao5 = get_A(C,x5,y5,z5);
 Af5 = kron(eye(d*b),ones(1,eta))*Ao5*Hs';
-pf5 = kron(eye(d*b),ones(1,eta))*p;
 
-R5 = diag(x5);
-S5 = diag(y5);
-T5 = diag(z5);
-
-M5 = [zeros(n) -T5         S5;
-     T5          zeros(n) -R5;
-     -S5         R5          zeros(n)];
+M5 = get_M(n,x5,y5,z5);
  
-Am5 = kron(eye(d*b),ones(1,eta))*M5*Ao5*Hs';
-pm5 = kron(eye(d*b),ones(1,eta))*M5*p5;
+Ab5 = get_Ab(d,b,n,Ao5,M5,Hs);
 
-Ab5 = [Af5;Am5];
+p5 = [px5;py5;pz5];
+pf5 = kron(eye(d*b),ones(1,eta))*p5;
+pm5 = kron(eye(d*b),ones(1,eta))*M5*p5;
 pb5 = [pf5;pm5];
 
 rankAb5 = rank(Ab5);
@@ -457,78 +367,16 @@ b = 3;
 eta = n/b;
 d = 3;
 
-Cs = [0 1 0 0 0 0 -1 0 0 0 0 0 0 0 0; % Verticals
-      0 0 1 0 0 0 0 -1 0 0 0 0 0 0 0;
-      0 0 0 1 0 0 0 0 -1 0 0 0 0 0 0;
-      0 0 0 0 1 0 0 0 0 -1 0 0 0 0 0;
-      0 0 0 0 0 0 1 0 0 0 0 -1 0 0 0;
-      0 0 0 0 0 0 0 1 0 0 0 0 -1 0 0;
-      0 0 0 0 0 0 0 0 1 0 0 0 0 -1 0;
-      0 0 0 0 0 0 0 0 0 1 0 0 0 0 -1;
-      
-      0 0 0 1 0 0 -1 0 0 0 0 0 0 0 0; % Saddles
-      0 0 0 1 0 0 0 -1 0 0 0 0 0 0 0;
-      0 0 0 0 1 0 -1 0 0 0 0 0 0 0 0;
-      0 0 0 0 1 0 0 -1 0 0 0 0 0 0 0;
-      0 0 0 0 0 0 0 0 1 0 0 -1 0 0 0;
-      0 0 0 0 0 0 0 0 1 0 0 0 -1 0 0;
-      0 0 0 0 0 0 0 0 0 1 0 -1 0 0 0;
-      0 0 0 0 0 0 0 0 0 1 0 0 -1 0 0];
-  
-Cr = [1 -1 0 0 0 0 0 0 0 0 0 0 0 0 0; % Body 1 bars
-      1 0 -1 0 0 0 0 0 0 0 0 0 0 0 0;
-      1 0 0 -1 0 0 0 0 0 0 0 0 0 0 0;
-      1 0 0 0 -1 0 0 0 0 0 0 0 0 0 0;
-      
-      0 0 0 0 0 1 -1 0 0 0 0 0 0 0 0; % Body 2 bars
-      0 0 0 0 0 1 0 -1 0 0 0 0 0 0 0;
-      0 0 0 0 0 1 0 0 -1 0 0 0 0 0 0;
-      0 0 0 0 0 1 0 0 0 -1 0 0 0 0 0;
-      
-      0 0 0 0 0 0 0 0 0 0 1 -1 0 0 0; % Body 3 bars
-      0 0 0 0 0 0 0 0 0 0 1 0 -1 0 0;
-      0 0 0 0 0 0 0 0 0 0 1 0 0 -1 0;
-      0 0 0 0 0 0 0 0 0 0 1 0 0 0 -1];
-C = [Cs;Cr];
-Hs = [eye(s) zeros(s,r)];
+C = get_spine_C_3d(b);
+[Hs,~] = get_H(s,r);
 
 pinned = zeros(n, 1);
 pinned(1:3) = 1;
 m_b = 0.8;
 m6 = m_b/eta * ones(n, 1);
 
-% Noise vectors by body
-xn6p2 = normrnd(0,bar_endpoint/100);
-yn6p2 = normrnd(0,bar_endpoint/100);
-zn6p2 = normrnd(0,bar_endpoint/100);
+coordinates6 = noisy_coordinate_generator(a,b,bar_endpoint,bar_endpoint/100,pi/180,debugging);
 
-xn6a2 = normrnd(0,pi/180);
-yn6a2 = normrnd(0,pi/180);
-zn6a2 = normrnd(0,pi/180);
-
-xn6p3 = normrnd(0,bar_endpoint/100);
-yn6p3 = normrnd(0,bar_endpoint/100);
-zn6p3 = normrnd(0,bar_endpoint/100);
-
-xn6a3 = normrnd(0,pi/180);
-yn6a3 = normrnd(0,pi/180);
-zn6a3 = normrnd(0,pi/180);
-
-xi6 = zeros(b * 6, 1);
-xi6(4:6) = [0; pi/2; 0];
-xi6(7:12) = [2*bar_endpoint + xn6p2;
-            0 + yn6p2;
-            0 + zn6p2;
-            0 + xn6a2;
-            pi/2 + yn6a2;
-            0 + zn6a2];
-xi6(13:18) = [4*bar_endpoint + xn6p3;
-            0 + yn6p3;
-            0 + zn6p3;
-            0 + xn6a3;
-            pi/2 + yn6a3;
-            0 + zn6a3];
-coordinates6 = get_node_coordinates_3d(a, xi6, debugging);
 x6 = coordinates6(1,:)';
 y6 = coordinates6(2,:)';
 z6 = coordinates6(3,:)';
@@ -537,26 +385,17 @@ px6 = -px6; py6 = -py6; pz6 = -pz6;
 for i=1:n
     pz6(i) = pz6(i) - m6(i)*g;
 end
-p6 = [px6;py6;pz6];
 
-Ao6 = [C'*diag(C*x6);
-       C'*diag(C*y6);
-       C'*diag(C*z6)]; % intermediate matrix
+Ao6 = get_A(C,x6,y6,z6);
 Af6 = kron(eye(d*b),ones(1,eta))*Ao6*Hs';
-pf6 = kron(eye(d*b),ones(1,eta))*p6;
 
-R6 = diag(x6);
-S6 = diag(y6);
-T6 = diag(z6);
-
-M6 = [zeros(n) -T6         S6;
-     T6          zeros(n) -R6;
-     -S6         R6          zeros(n)];
+M6 = get_M(n,x6,y6,z6);
  
-Am6 = kron(eye(d*b),ones(1,eta))*M6*Ao6*Hs';
-pm6 = kron(eye(d*b),ones(1,eta))*M6*p6;
+Ab6 = get_Ab(d,b,n,Ao6,M6,Hs);
 
-Ab6 = [Af6;Am6];
+p6 = [px6;py6;pz6];
+pf6 = kron(eye(d*b),ones(1,eta))*p6;
+pm6 = kron(eye(d*b),ones(1,eta))*M6*p6;
 pb6 = [pf6;pm6];
 
 rankAb6 = rank(Ab6);
@@ -613,105 +452,16 @@ b = 4;
 eta = n/b;
 d = 3;
 
-Cs = [0 1 0 0 0 0 -1 0 0 0 0 0 0 0 0 0 0 0 0 0; % Verticals
-      0 0 1 0 0 0 0 -1 0 0 0 0 0 0 0 0 0 0 0 0;
-      0 0 0 1 0 0 0 0 -1 0 0 0 0 0 0 0 0 0 0 0;
-      0 0 0 0 1 0 0 0 0 -1 0 0 0 0 0 0 0 0 0 0;
-      0 0 0 0 0 0 1 0 0 0 0 -1 0 0 0 0 0 0 0 0;
-      0 0 0 0 0 0 0 1 0 0 0 0 -1 0 0 0 0 0 0 0;
-      0 0 0 0 0 0 0 0 1 0 0 0 0 -1 0 0 0 0 0 0;
-      0 0 0 0 0 0 0 0 0 1 0 0 0 0 -1 0 0 0 0 0;
-      0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 -1 0 0 0;
-      0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 -1 0 0;
-      0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 -1 0;
-      0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 -1;
-      
-      0 0 0 1 0 0 -1 0 0 0 0 0 0 0 0 0 0 0 0 0; % Saddles
-      0 0 0 1 0 0 0 -1 0 0 0 0 0 0 0 0 0 0 0 0;
-      0 0 0 0 1 0 -1 0 0 0 0 0 0 0 0 0 0 0 0 0;
-      0 0 0 0 1 0 0 -1 0 0 0 0 0 0 0 0 0 0 0 0;
-      0 0 0 0 0 0 0 0 1 0 0 -1 0 0 0 0 0 0 0 0;
-      0 0 0 0 0 0 0 0 1 0 0 0 -1 0 0 0 0 0 0 0;
-      0 0 0 0 0 0 0 0 0 1 0 -1 0 0 0 0 0 0 0 0;
-      0 0 0 0 0 0 0 0 0 1 0 0 -1 0 0 0 0 0 0 0;
-      0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 -1 0 0 0;
-      0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 -1 0 0;
-      0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 -1 0 0 0;
-      0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 -1 0 0];
-  
-Cr = [1 -1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0; % Body 1 bars
-      1 0 -1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0;
-      1 0 0 -1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0;
-      1 0 0 0 -1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0;
-      
-      0 0 0 0 0 1 -1 0 0 0 0 0 0 0 0 0 0 0 0 0; % Body 2 bars
-      0 0 0 0 0 1 0 -1 0 0 0 0 0 0 0 0 0 0 0 0;
-      0 0 0 0 0 1 0 0 -1 0 0 0 0 0 0 0 0 0 0 0;
-      0 0 0 0 0 1 0 0 0 -1 0 0 0 0 0 0 0 0 0 0;
-      
-      0 0 0 0 0 0 0 0 0 0 1 -1 0 0 0 0 0 0 0 0; % Body 3 bars
-      0 0 0 0 0 0 0 0 0 0 1 0 -1 0 0 0 0 0 0 0;
-      0 0 0 0 0 0 0 0 0 0 1 0 0 -1 0 0 0 0 0 0;
-      0 0 0 0 0 0 0 0 0 0 1 0 0 0 -1 0 0 0 0 0;
-      
-      0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 -1 0 0 0; % Body 4 bars
-      0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 -1 0 0;
-      0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 -1 0;
-      0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 -1];
-C = [Cs;Cr];
-Hs = [eye(s) zeros(s,r)];
+C = get_spine_C_3d(b);
+[Hs,~] = get_H(s,r);
 
 pinned = zeros(n, 1);
 pinned(1:3) = 1;
 m_b = 0.8;
 m7 = m_b/eta * ones(n, 1);
 
-% Noise vectors by body
-xn7p2 = normrnd(0,bar_endpoint/100);
-yn7p2 = normrnd(0,bar_endpoint/100);
-zn7p2 = normrnd(0,bar_endpoint/100);
+coordinates7 = noisy_coordinate_generator(a,b,bar_endpoint,bar_endpoint/100,pi/180,debugging);
 
-xn7a2 = normrnd(0,pi/180);
-yn7a2 = normrnd(0,pi/180);
-zn7a2 = normrnd(0,pi/180);
-
-xn7p3 = normrnd(0,bar_endpoint/100);
-yn7p3 = normrnd(0,bar_endpoint/100);
-zn7p3 = normrnd(0,bar_endpoint/100);
-
-xn7a3 = normrnd(0,pi/180);
-yn7a3 = normrnd(0,pi/180);
-zn7a3 = normrnd(0,pi/180);
-
-xn7p4 = normrnd(0,bar_endpoint/100);
-yn7p4 = normrnd(0,bar_endpoint/100);
-zn7p4 = normrnd(0,bar_endpoint/100);
-
-xn7a4 = normrnd(0,pi/180);
-yn7a4 = normrnd(0,pi/180);
-zn7a4 = normrnd(0,pi/180);
-
-xi7 = zeros(b * 6, 1);
-xi7(4:6) = [0; pi/2; 0];
-xi7(7:12) = [2*bar_endpoint + xn7p2;
-            0 + yn7p2;
-            0 + zn7p2;
-            0 + xn7a2;
-            pi/2 + yn7a2;
-            0 + zn7a2];
-xi7(13:18) = [4*bar_endpoint + xn7p3;
-            0 + yn7p3;
-            0 + zn7p3;
-            0 + xn7a3;
-            pi/2 + yn7a3;
-            0 + zn7a3];
-xi7(19:24) = [6*bar_endpoint + xn7p4;
-            0 + yn7p4;
-            0 + zn7p4;
-            0 + xn7a4;
-            pi/2 + yn7a4;
-            0 + zn7a4];
-coordinates7 = get_node_coordinates_3d(a, xi7, debugging);
 x7 = coordinates7(1,:)';
 y7 = coordinates7(2,:)';
 z7 = coordinates7(3,:)';
@@ -720,26 +470,15 @@ px7 = -px7; py7 = -py7; pz7 = -pz7;
 for i=1:n
     pz7(i) = pz7(i) - m7(i)*g;
 end
+
+Ao7 = get_A(C,x7,y7,z7);
+M7 = get_M(n,x7,y7,z7);
+
+Ab7 = get_Ab(d,b,n,Ao7,M7,Hs);
+
 p7 = [px7;py7;pz7];
-
-Ao7 = [C'*diag(C*x7);
-       C'*diag(C*y7);
-       C'*diag(C*z7)]; % intermediate matrix
-Af7 = kron(eye(d*b),ones(1,eta))*Ao7*Hs';
 pf7 = kron(eye(d*b),ones(1,eta))*p7;
-
-R7 = diag(x7);
-S7 = diag(y7);
-T7 = diag(z7);
-
-M7 = [zeros(n) -T7         S7;
-     T7          zeros(n) -R7;
-     -S7         R7          zeros(n)];
- 
-Am7 = kron(eye(d*b),ones(1,eta))*M7*Ao7*Hs';
 pm7 = kron(eye(d*b),ones(1,eta))*M7*p7;
-
-Ab7 = [Af7;Am7];
 pb7 = [pf7;pm7];
 
 rankAb7 = rank(Ab7);
@@ -775,7 +514,64 @@ disp(rref(A7));
 % tensegrities that are conclusively solved by this formulation that cannot
 % be solved by the nodal one.
 
+%% Extended Analysis
+% I now generalize and see if this conjecture holds for much longer spines
+% with noise injection in their vertebra positions
+
+vert_max = 100; % Highest vertebra count - these matrices will get massive
+bar_endpoint = 0.5; % m
+a = [   0,              0,              0;
+        bar_endpoint,     0,              -bar_endpoint;
+        -bar_endpoint,    0,              -bar_endpoint;
+        0,              bar_endpoint,     bar_endpoint;
+        0,              -bar_endpoint,    bar_endpoint]';
+g = 9.81;
+
+% We care about the following:
+% (1) Dimensions of Ab
+% (2) Rank of Ab
+% (3) Dimensions of A
+% (4) Rank of A
+for b = 2:vert_max
+    % Parameters
+    s = 8*(b-1);
+    r = 4*b;
+    n = 5*b;
+    eta = n/b;
+    d = 3;
+    
+    C = get_spine_C_3d(b);
+    [Hs,~] = get_H(s,r);
+
+    pinned = zeros(n, 1);
+    pinned(1:3) = 1;
+    m_b = 0.8;
+    m = m_b/eta * ones(n, 1);
+
+    coordinates = noisy_coordinate_generator(a,b,bar_endpoint,bar_endpoint/100,pi/180,debugging);
+
+    x = coordinates(1,:)';
+    y = coordinates(2,:)';
+    z = coordinates(3,:)';
+    
+    A = get_A(C,x,y,z);
+    M = get_M(n,x,y,z);
+    Ab = get_Ab(d,b,n,A,M,Hs);
+    
+    rankA = rank(A);
+    dimA = size(A);
+    rankAb = rank(Ab);
+    dimAb = size(Ab);
+    
+    fprintf(['b = ' num2str(b) ' | dim(A) = ' num2str(dimA) ' | rank(A) = '...
+             num2str(rankA) ' | dim(Ab) = ' num2str(dimAb) ' | rank(Ab) = '...
+             num2str(rankAb) '\n']);
+end
+
 %% Extra: Connectivity Analysis and Graph Coloring
+% This is currently commented out
+%{
+
 % Rigid body analysis from the Cr submatrix
 Lr = Cr'*Cr;
 [Vr, Dr] = eig(Lr);
@@ -798,3 +594,5 @@ jLr = jumbleCr'*jumbleCr;
 % the null space of the laplacian to pick off node indices. I'm going to
 % save this observation for later, but I think we can make something good
 % out of it.
+
+%}

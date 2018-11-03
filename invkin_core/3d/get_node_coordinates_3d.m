@@ -72,7 +72,7 @@ for i = 1:b
     % vector.
     translations = [ state_i(1) * ones(1, n_i);
                      state_i(2) * ones(1, n_i);
-                     state_i(3) * ones(1, n_i)]
+                     state_i(3) * ones(1, n_i)];
         
     % The new frame is then translated also.
     rot_trans_frame = rotated_frame + translations;
