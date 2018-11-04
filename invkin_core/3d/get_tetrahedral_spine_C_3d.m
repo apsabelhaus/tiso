@@ -2,7 +2,7 @@
 
 % Calculates the node-branch incidence matrix C for the class of spinal
 % tensegrity comprising Belka
-function C = get_spine_C_3d(b)
+function C = get_tetrahedral_spine_C_3d(b)
     % Vertical Cables. Constructs repeating blocks for this spine
     cvblk1 = [0 1 0 0 0;
                0 0 1 0 0;
