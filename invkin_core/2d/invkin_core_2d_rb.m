@@ -1,7 +1,7 @@
 %% invkin_core_2d_rb.m
 % Copyright Andrew P. Sabelhaus 2018
 
-function [f_opt, q_opt, Ab, pb] = invkin_core_2d_rb(x, z, px, pz, C, COMs, s, b, q_min, debugging)
+function [f_opt, q_opt, Ab, pb] = invkin_core_2d_rb(x, z, px, pz, C, COMs, s, b, q_min, w, debugging)
 % invkin_core_2d_rb performs a single inverse kinematics computation for a
 % 2-dimensional tensegrity structure (robot), using the reformulated
 % problem treating the rigid bodies with a force/moment balance and not as
@@ -130,6 +130,27 @@ collapse = kron(eye(d*b), ones(eta, 1)');
 % matrix:
 A = [ C' * diag(C * x);
       C' * diag(C * z)];
+  
+  % ANCHORS FORMULATION:
+% For using the anchors-formulation (removing the anchors from the
+% constraint), we right-multiply the Af matrix.
+% Each dimensional component needs to be
+W = diag(w);
+W(~any(W,2), :) = [];
+
+% This W takes out the anchors for one dimension.
+% To do it in multiple dimensions, pattern it out.
+% Wf = kron(eye(d), W)
+Wf = kron(eye(2), W);
+
+% We can now remove the rows from A.
+% This is done "before" the rigid body reformulation,
+% so this necessarily is also dependent on the assumptions: rigid bodies
+% are "in a row" in terms of labeling order, etc.
+%A = Wf * A;
+
+% ^^ 2018-11-6: this messes up the dimensions of A with respect to H_hat',
+% so we need to reformulate that reduction in terms of size h not size n.
   
 % The Af matrix can then be collapsed to size (2b x s) from size (2n x
 % (s+r))

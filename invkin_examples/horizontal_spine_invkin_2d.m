@@ -89,6 +89,22 @@ g = 9.81;
 % right to Drew if motors are included.
 m_i = 0.8;
 
+% Example of how to do the 'anchored' analysis.
+% Declare a vector w \in R^n, 
+% where w(i) == 1 if the node should be 'kept'.
+% For this example, want to treat body 1 as the anchored nodes.
+% So, we zero-out anchored nodes 1 through 4, and keep nodes 5-8
+% (which is vertebra two.)
+w = [0; 0; 0; 0; 1; 1; 1; 1];
+
+% In case we need it later, we can calculate the number of 'remaining'
+% nodes, the not-anchored ones. Call that 'h'.
+h = nnz(w);
+
+% ...later, the command we want to create what we need is
+% W = diag(w);
+% W(~any(W,2), :) = [];
+
 %% Trajectory of positions
 
 % all the positions of each rigid body (expressed as their COM positions
@@ -218,7 +234,7 @@ COMs(:,1) = sum(mass_positions(:, 1:4), 2) / (m_node*4);
 COMs(:,2) = sum(mass_positions(:, 5:8), 2) / (m_node*4);
 
 % Solve
-[f_opt, q_opt, Ab, pb] = invkin_core_2d_rb(x, z, px, pz, C, COMs, s, b, q_min, debugging);
+[f_opt, q_opt, Ab, pb] = invkin_core_2d_rb(x, z, px, pz, C, COMs, s, b, q_min, w, debugging);
 
 % Seems correct, intuitively!
 % Cable 1 is horizontal, below.
