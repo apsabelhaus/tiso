@@ -75,7 +75,12 @@ r = size(C,1) - s; % rows of C is total number of members, and s is
 % provided.
 
 % The number of nodes per rigid body is
-eta = n / b;
+%eta = n / b;
+% Actually, now, removing the nodes that are not being considered (the
+% anchors), we really want to calculate eta using h here, where h < n is
+% the number of remaining nodes.
+h = nnz(w);
+eta = h / b;
 
 % For later work, generalize: this is the dimensionality of the problem
 % (2 dimensional.)
@@ -107,7 +112,7 @@ H_hat = [eye(s), zeros(s, r)];
 
 % PREVIOUSLY: By hand,
 
-% Therefore, all the lengths of each cable are:
+% all the lengths of each cable are:
 dx = H_hat * C * x;
 dz = H_hat * C * z;
 
@@ -147,26 +152,65 @@ Wf = kron(eye(2), W);
 % This is done "before" the rigid body reformulation,
 % so this necessarily is also dependent on the assumptions: rigid bodies
 % are "in a row" in terms of labeling order, etc.
-%A = Wf * A;
+Aw = Wf * A;
 
 % ^^ 2018-11-6: this messes up the dimensions of A with respect to H_hat',
 % so we need to reformulate that reduction in terms of size h not size n.
   
 % The Af matrix can then be collapsed to size (2b x s) from size (2n x
 % (s+r))
-Af = collapse * A * H_hat';
+Af = collapse * Aw * H_hat';
 
 if debugging
     A
+    Aw
     Af
 end
   
 % Combine the p vector
 p = [px; pz];
 
+% We need to remove the not-used nodes from the external balance now too.
+% The Wf matrix works the same way here (nicely same dimensions.)
+pw = Wf * p;
+
 % Now, we can also calculate pf by "collapsing" it down to per-body instead
 % of per-node.
-pf = collapse * p;
+pf = collapse * pw;
+
+% The moment balance: 
+% We can sum around the origin, and then similarly remove rows. 
+% For example, for the moments due to external forces, we do something
+% like:
+% M_ext = det([x, y; Fx, Fy])
+%       = x*Fy - y*Fx
+% where x and y are the node positions at which [Fx, Fy] act.
+% This is equivalent to multiplying the p vector by the matrix
+% TO-DO interchange z with y since right-hand convention means y is "up" in
+% 2D.
+B = [-diag(z), diag(x)];
+
+% the B matrix is \in \mathbb{R}^(n, 2n} since we're only doing moment
+% balance in the Z direction.
+
+% The moments from the total external force at each node are
+pm = B * p;
+
+% Then collapse down according to (a) removing anchors and (b) rigid body
+% reformulation.
+
+% What's the 'collapse' matrix to use here? It's different dimensions.
+% Need to sum according to eta, but x and y are combined, so should be
+% half the number of columns (only n nodes, not 2n) and half the number of
+% rows (only summing in Z for each body, not summing and X and Y for each
+% body)
+% It would then be
+collapse_m = kron(eye(b), ones(eta, 1)');
+
+pm = collapse_m * W * pm;
+
+% Stopped here 2018-11-12. Looks good though! Just re-use B and collapse
+% below to get the final Ab and pb.
 
 % Next, we need the moments. This is significantly more complicated.
 % The COM for body i is COM(:,i).
@@ -184,6 +228,9 @@ pf = collapse * p;
 % Am is rows for each body's x and z sum, \in R^{b x s}
 % (since we only have one moment in 2D.)
 Am = zeros(b, s);
+
+print('ERROR! This function does not yet use the new automatic moment balance, so does not work at the moment. Returning.');
+return
 
 % For each rigid body,
 for g = 1:b

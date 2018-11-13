@@ -50,8 +50,8 @@ end
 
 % number of rigid bodies
 b= 2;
-% number of nodes
-n = size(a, 2) * b;
+% When removing the anchor nodes, it's like removing one of the bodies:
+%b = 1;
 
 % Configuration matrix for WHOLE STRUCTURE. (in future, pattern out.)
 
@@ -72,10 +72,14 @@ C = [0  1  0  0  0 -1  0  0;  %  1, cable 1
      0  0  0  0  1  0 -1  0;  %  9, ...
      0  0  0  0  1  0  0 -1]; % 10, bar 6
  
-% hard-coded here.
+% Need to specify number of cables, to split up C.
 s = 4;
-r = 6;
+% r follows directly, it's the remainder number of rows.
+r = size(C,1) - s;
 % ...because C is \in R^{10 x 8}.
+
+% number of nodes
+n = size(C, 2);
 
 if debugging
     C
@@ -95,7 +99,9 @@ m_i = 0.8;
 % For this example, want to treat body 1 as the anchored nodes.
 % So, we zero-out anchored nodes 1 through 4, and keep nodes 5-8
 % (which is vertebra two.)
-w = [0; 0; 0; 0; 1; 1; 1; 1];
+%w = [0; 0; 0; 0; 1; 1; 1; 1];
+% Including all nodes:
+w = ones(n,1);
 
 % In case we need it later, we can calculate the number of 'remaining'
 % nodes, the not-anchored ones. Call that 'h'.
