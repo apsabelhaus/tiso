@@ -11,6 +11,9 @@
 % of the inverse kinematics problem. And, that reformulation currently has
 % stringent constraints on when it can be used - right now, only with 2
 % rigid bodies.
+% As of 2018-11-12: script 'might' now work for b > 2, we've
+% algorithmically taken care of the moment balance. TO-DO: check and
+% confirm.
 
 %% set up the workspace
 clear all;
@@ -49,9 +52,9 @@ if debugging
 end
 
 % number of rigid bodies
-b= 2;
+% b = 2;
 % When removing the anchor nodes, it's like removing one of the bodies:
-%b = 1;
+b = 1;
 
 % Configuration matrix for WHOLE STRUCTURE. (in future, pattern out.)
 
@@ -71,7 +74,7 @@ C = [0  1  0  0  0 -1  0  0;  %  1, cable 1
      0  0  0  0  1 -1  0  0;  %  8, ...
      0  0  0  0  1  0 -1  0;  %  9, ...
      0  0  0  0  1  0  0 -1]; % 10, bar 6
- 
+
 % Need to specify number of cables, to split up C.
 s = 4;
 % r follows directly, it's the remainder number of rows.
@@ -99,17 +102,13 @@ m_i = 0.8;
 % For this example, want to treat body 1 as the anchored nodes.
 % So, we zero-out anchored nodes 1 through 4, and keep nodes 5-8
 % (which is vertebra two.)
-%w = [0; 0; 0; 0; 1; 1; 1; 1];
+w = [0; 0; 0; 0; 1; 1; 1; 1];
 % Including all nodes:
-w = ones(n,1);
+% w = ones(n,1);
 
 % In case we need it later, we can calculate the number of 'remaining'
 % nodes, the not-anchored ones. Call that 'h'.
 h = nnz(w);
-
-% ...later, the command we want to create what we need is
-% W = diag(w);
-% W(~any(W,2), :) = [];
 
 %% Trajectory of positions
 
@@ -131,9 +130,12 @@ xi(3) = -pi/2;
 % to 3/4 of that length.
 % the length of one vert is 2 * bar_endpoint. 
 % x-position is coordinate 1.
+% To make things interesting, let's rotate it a small bit, too.
+%xi(3) = -pi/2 + pi/16;
+
 xi(4:6) = [     bar_endpoint * (3/2);
                 0;
-               -pi/2];
+               -pi/2 + pi/16];
             
 if debugging
     xi
@@ -232,15 +234,8 @@ end
 x = coordinates(1, :)';
 z = coordinates(2, :)';
 
-% For the rigid body balance, we need the COMs of each rigid body,
-% not just the COM of the whole structure.
-COMs = zeros(2, b);
-% hard coding here: 4 nodes per body (n=8, b=2, n/b = 4.)
-COMs(:,1) = sum(mass_positions(:, 1:4), 2) / (m_node*4);
-COMs(:,2) = sum(mass_positions(:, 5:8), 2) / (m_node*4);
-
 % Solve
-[f_opt, q_opt, Ab, pb] = invkin_core_2d_rb(x, z, px, pz, C, COMs, s, b, q_min, w, debugging);
+[f_opt, q_opt, Ab, pb] = invkin_core_2d_rb(x, z, px, pz, w, C, s, b, q_min, debugging);
 
 % Seems correct, intuitively!
 % Cable 1 is horizontal, below.

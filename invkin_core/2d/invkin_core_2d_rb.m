@@ -1,7 +1,7 @@
 %% invkin_core_2d_rb.m
 % Copyright Andrew P. Sabelhaus 2018
 
-function [f_opt, q_opt, Ab, pb] = invkin_core_2d_rb(x, z, px, pz, C, COMs, s, b, q_min, w, debugging)
+function [f_opt, q_opt, Ab, pb] = invkin_core_2d_rb(x, z, px, pz, w, C, s, b, q_min, debugging)
 % invkin_core_2d_rb performs a single inverse kinematics computation for a
 % 2-dimensional tensegrity structure (robot), using the reformulated
 % problem treating the rigid bodies with a force/moment balance and not as
@@ -29,16 +29,14 @@ function [f_opt, q_opt, Ab, pb] = invkin_core_2d_rb(x, z, px, pz, C, COMs, s, b,
 %   x, z = the x, and z positions of each node in the structure. Must
 %   be the same dimension.
 %
-%   C = configuration matrix for the structure. See literature for
-%   definition.
-%
 %   px, pz = vectors of external forces, applied to each node (has the same
 %   dimension as x, z.)
 %
-%   COMs = locations of the center of mass of each body. This needs to be
-%   pre-computed by the calling function, or else we'd need knowledge of
-%   the mass of each rigid body within this script (want to avoid that.)
-%   This matrix should be column vectors of each COM, so \in R^{d x b}
+%   w = anchoring vector. Elements = 1 if node should be kept, = 0 if node
+%   is an anchor and should be thrown out of the force balance. Size is n.
+%
+%   C = configuration matrix for the structure. See literature for
+%   definition.
 %
 %   s = number of cables (tension-only members in the system.) This is
 %   required to pose the optimization program such that no cables "push."
@@ -65,12 +63,53 @@ function [f_opt, q_opt, Ab, pb] = invkin_core_2d_rb(x, z, px, pz, C, COMs, s, b,
 
 %% Check if inputs are valid (conformal dimensions of vectors and matrices)
 
-% do this later...
+% The number of nodes, according to the C matrix, is its number of columns:
+n = size(C,2);
+% Verify that this is also the length of all other nodal vectors.
+if n ~= size(x, 1)
+    error('Error: the C matrix and the x vector (node positions in x) have a different number of nodes. Cannot continue.');
+elseif n ~= size(z, 1)
+    error('Error: the C matrix and the z vector (node positions in z) have a different number of nodes. Cannot continue.');
+elseif n ~= size(px, 1)
+    error('Error: the C matrix and the px vector (node external rxn. forces in x) have a different number of nodes. Cannot continue.');
+elseif n ~= size(pz, 1)
+    error('Error: the C matrix and the pz vector (node external rxn. forces in z) have a different number of nodes. Cannot continue.');
+elseif n ~= size(w, 1)
+    error('Error: the C matrix and the w vector (anchoring vector) have a different number of nodes. Cannot continue.');
+end
+
+% Also check that each of these are a column vector.
+if size(x, 2) ~= 1
+    error('Error: x is not a column vector. Cannot continue.');
+elseif size(z, 2) ~= 1
+    error('Error: z is not a column vector. Cannot continue.');
+elseif size(px, 2) ~= 1
+    error('Error: px is not a column vector. Cannot continue.');
+elseif size(pz, 2) ~= 1
+    error('Error: pz is not a column vector. Cannot continue.');
+elseif size(w, 2) ~= 1
+    error('Error: w is not a column vector. Cannot continue.');
+end
+
+% There must be at least one rigid body
+if b < 1
+    error('Error: b is less than one. Must be at least one rigid body.');
+end
+
+% There cannot be more cables than total number of members
+if s > size(C, 1)
+    error('Error: you have specified that there are more cables than total number of members, this is not possible. Cannot continue.');
+end
+
+% Minimum cable tension must be positive - otherwise we'd have cables
+% holding compressive loads
+if q_min < 0
+    error('Error: minimum cable tension must be positive, please specify a q_min > 0.');
+end
 
 %% First, formulate the constants / parameters for the optimization:
 
 % As aside: we can get the number of nodes and number of members by
-n = size(x,1);
 r = size(C,1) - s; % rows of C is total number of members, and s is
 % provided.
 
@@ -87,9 +126,7 @@ eta = h / b;
 d = 2;
 
 % First, let's create the A matrix.
-% We're assuming there are only two rigid bodies.
-% That way, we can define the following helper variable that "removes" the
-% bar forces from each rigid body.
+% TO-DO: check validity for b > 2 rigid bodies.
 
 % Remember, we're looking at something (in the end) like:
 % Ab * qs = pb
@@ -110,17 +147,6 @@ H_hat = [eye(s), zeros(s, r)];
 % Equivalently, H_hat^\top will right-multiply the A matrices to remove the
 % bars.
 
-% PREVIOUSLY: By hand,
-
-% all the lengths of each cable are:
-dx = H_hat * C * x;
-dz = H_hat * C * z;
-
-% % Since all cables apply forces to both rigid bodies, and assuming tension
-% % is "negative" here, 
-% Af = [-dx'; dx'; -dz'; dz'];
-% % remember, force = length * force density.
-
 % NOW: We can actually collapse it in the same way as the external force
 % vector. The dimensions and calculations ctually line up exactly how
 % we want. Think about it like summing over chunks of columns of size eta
@@ -136,16 +162,17 @@ collapse = kron(eye(d*b), ones(eta, 1)');
 A = [ C' * diag(C * x);
       C' * diag(C * z)];
   
-  % ANCHORS FORMULATION:
+% ANCHORS FORMULATION:
 % For using the anchors-formulation (removing the anchors from the
 % constraint), we right-multiply the Af matrix.
 % Each dimensional component needs to be
 W = diag(w);
+% Remove the zero-ed rows in W. It doesn't seem like there's a nice linear
+% algebra way to do this, so use MATLAB's logical indexing instead.
 W(~any(W,2), :) = [];
 
 % This W takes out the anchors for one dimension.
 % To do it in multiple dimensions, pattern it out.
-% Wf = kron(eye(d), W)
 Wf = kron(eye(2), W);
 
 % We can now remove the rows from A.
@@ -153,9 +180,6 @@ Wf = kron(eye(2), W);
 % so this necessarily is also dependent on the assumptions: rigid bodies
 % are "in a row" in terms of labeling order, etc.
 Aw = Wf * A;
-
-% ^^ 2018-11-6: this messes up the dimensions of A with respect to H_hat',
-% so we need to reformulate that reduction in terms of size h not size n.
   
 % The Af matrix can then be collapsed to size (2b x s) from size (2n x
 % (s+r))
@@ -178,8 +202,12 @@ pw = Wf * p;
 % of per-node.
 pf = collapse * pw;
 
+% NOTE: As of Nov. 12th, have substituted the general moment balance
+% formulation. This seems to be correct, much more so than the old
+% iterative calculation (which was always suspect.) 
+
 % The moment balance: 
-% We can sum around the origin, and then similarly remove rows. 
+% We can sum around the origin, and then remove rows similarly to Aw.
 % For example, for the moments due to external forces, we do something
 % like:
 % M_ext = det([x, y; Fx, Fy])
@@ -207,150 +235,20 @@ pm = B * p;
 % It would then be
 collapse_m = kron(eye(b), ones(eta, 1)');
 
+% The moment contribution from external forces should be size b x 1,
+% one sum moment in Z for each rigid body.
+% We also need to remove the anchors, as with the force balance.
 pm = collapse_m * W * pm;
 
-% Stopped here 2018-11-12. Looks good though! Just re-use B and collapse
-% below to get the final Ab and pb.
+% For the collapsation of the forces on the lefthand side, due to the
+% cables, we perform exactly the same operation. 
+% Multiplying by B calculates the moments due to each cable around the
+% origin of the world frame
+Am = B * A;
 
-% Next, we need the moments. This is significantly more complicated.
-% The COM for body i is COM(:,i).
-
-% We'll need two vectors for each cable:
-% a) from COM of that rigid body to the anchor point for that rigid body,
-%       (in paper: v_(h, i)
-% b) from the anchor point on this rigid body to its other anchor point
-%       (in paper: v_(i, j)
-
-% Though there might be a linear-algebra way to do this next step, a for
-% loop is more intuitive.
-
-% Calculate the moments for each cable, for each body.
-% Am is rows for each body's x and z sum, \in R^{b x s}
-% (since we only have one moment in 2D.)
-Am = zeros(b, s);
-
-print('ERROR! This function does not yet use the new automatic moment balance, so does not work at the moment. Returning.');
-return
-
-% For each rigid body,
-for g = 1:b
-    % for each cable for this body,
-    for k = 1:s
-        % (note, we know by our assumption of b = 2 that each cable apples
-        % a force to both bodies.)
-        % From Drew's paper, we have, for body g, and cable k, which
-        % connects nodes i and j,
-        % (abusing a bit of notation about the COM,)
-        % M(g, k) = det( v_{com(g), i}, v_{i, j} ) * q_k
-        % 
-        % Get each of the two vectors.
-        % The anchor points for cable k can be picked out using the C
-        % matrix.
-        % Remember, the C matrix is graph structured: 1 at the "from" node,
-        % and -1 at the "to" node. E.g., anchor1 and anchor2.
-        % The == operator checks if each element of the matrix has a
-        % certain value.
-        from = (C == 1);
-        to = (C == -1);
-        % HOWEVER, the graph structure of C does NOT account for the
-        % "switching" of anchor points between rigid bodies. 
-        % For the "first" rigid body, the one with a +1 in C, this makes
-        % sense. However, for the "second" rigid body, with the -1 in C,
-        % this is flipped: the anchor on this body is actually the
-        % *second* node, not the first. 
-        % How to check and flip if needed?
-        % By our assumption, the "s" rows of C are block structured
-        % according to rigid body (e.g., size s x eta each.)
-        % So, one easy way is to check if, for the k-th cable,
-        % this s-th block has a +1 or -1.
-        % That would mean, for an example with b=2, n=8, so eta=4, 
-        % "if there is a 1 in to_k, in its columns 5:8, then switch the
-        % from and to."
-        % A "1" is logical true, and since there can only be at most one
-        % anchor point (assuming our C is valid and Drew's math ain't
-        % wrong, see the justification for these indices below)
-        if( sum( to(k, ((g-1)*eta + 1):(g*eta))) == 1)
-            % flip.
-            if( debugging )
-                disp('Flipping anchors for body')
-                g
-                disp('and cable')
-                k
-            end
-            temp = from;
-            from = to;
-            to = temp;
-        end
-        
-        % Remove all but the k-th row of this matrix.
-        % By doing so, we've got two vectors that multiply together to get
-        % a scalar.
-        from_k = from(k, :);
-        to_k = to(k,:);
-
-        % We then know the x and z positions of each anchor.
-        x_from_k = from_k * x;
-        z_from_k = from_k * z;
-        x_to_k = to_k * x;
-        z_to_k = to_k * z;
-        % ...these should all be SCALARS!
-        %anchor1 = [C(k, :)*x; C(k, :)*z];
-        
-        % the COMs matrix: rows are x, z and columns are g.
-        % the first vector (COM -> anchor1) is 
-        v1 = [x_from_k - COMs(1,g); 
-              z_from_k - COMs(2,g)];
-        % the second vector (anchor1 -> anchor2) is
-        v2 = [x_to_k - x_from_k; 
-              z_to_k - z_from_k];
-        % The component in the Am matrix is then the determinant
-        % (since the q_k vector will be multiplied by it during the
-        % optimization.)
-        Am(g, k) = det([v1, v2]);
-    end
-end
-
-% Now, we also need the pm vector.
-% The result is a sum, according to body.
-pm = zeros(b, 1);
-% This sum must be over EACH NODE!
-% This is because we need the moment arm for each force!!!
-%   ***TO-DO: IS THIS VALID, SINCE GRAVITY IS INCLUDED IN p?
-%             ...in other words, since the moment arm for the sum of
-%             gravitational forces is zero, since we're summing around the
-%             COM... is the sum over gravitational forces still zero since
-%             those forces "cancel out" or do we need to do that ourselves?
-%             Pretty sure the "axis rule" for moments is such that these will
-%             cancel, but can't be sure until I justify it myself.
-for g = 1:b
-    % For the g-th rigid body, we will pull out the coordinates for each of
-    % its nodes.
-    % Nodes go from ((g-1)*eta + 1) : g*eta, 
-    % example, 2 bodies 8 nodes, body 1 is 1:4, body 2 is 5:8.
-    x_g = x( (g-1)*eta + 1 : g*eta );
-    z_g = z( (g-1)*eta + 1 : g*eta );
-    % Similarly, pull out the forces from the p vectors (saves us indexing
-    % trouble later.)
-    px_g = px( (g-1)*eta + 1 : g*eta );
-    pz_g = pz( (g-1)*eta + 1 : g*eta );
-    % We'll form the total force vector, knowing that the direction of the
-    % p_x forces is [1; 0] and the direction of the p_z forces is [0; 1].
-    % This has a slightly different shape than "p" above, in order to work
-    % well with the moment determinant. Specifically,
-    % p_g \in R^{d, eta}
-    p_g = [px_g'; pz_g'];
-    % The moment due to node m (from m=1:eta) is similar to above, but we
-    % don't need to factor out the force itself (can leave in, unlike the
-    % force densitites q above, so we're really doing r x F here (in 2D).
-    % M(g, m) = det( v_{com(g), m}, p_g(m) )
-    for m=1:eta
-        % This node's vector from the COM for its body is
-        v1 = [x_g(m) - COMs(1,g);
-              z_g(m) - COMs(2,g)];
-        % This node's contribution uses the p_g vector for node m.
-        pm(g) = pm(g) + det([v1, p_g(:,m)]);
-    end
-end
+% Then remove the bars, and collapse it down to one moment balance.
+% This leaves a matrix of size b x s.
+Am = collapse_m * W * Am * H_hat';
 
 % finally, can concatenate the force balance with the moment balance.
 Ab = [Af; Am];
@@ -378,7 +276,7 @@ q_min_vector = q_min * [ones(s,1)];
 % constrained to inequality constrained.
 
 if debugging
-    disp('Solving the inverse kinematics problem for a 3D tensegrity structure...');
+    disp('Solving the inverse kinematics problem for a 2D tensegrity structure...');
 end
 
 % quadprog's arguments are
@@ -414,6 +312,10 @@ if debugging
     b_eq
 end
 
+% TO-DO: sanitize here? Maybe zero-out anything that hits numberical
+% precision, e.g. any element < epsilon, where epsilon = 1e-14 or so,
+% set = 0. Is this a good idea?
+
 % Call quadprog
 [q_opt] = quadprog(H, f, A_ineq, b_ineq, A_eq, b_eq);
 
@@ -428,6 +330,10 @@ end
 % % direction are
 % dx = C * x;
 % dz = C * z;
+
+% all the lengths of each cable are:
+dx = H_hat * C * x;
+dz = H_hat * C * z;
 
 % so the lengths of each cable are the euclidean norm of each 2-vector.
 % re-organize:
