@@ -74,7 +74,7 @@ d = 3; % Dimension (Cartesian space)
 % The 4 bars in the bottom vertebra take the next four indices
 
 % We now construct C and the corresponding H matrix.
-C = get_spine_C_3d(b);
+C = get_tetrahedral_spine_C_3d(b);
 [Hs,~] = get_H(s,r);
 
 %% Case 1: Drew's Example Reference Setup
@@ -120,7 +120,7 @@ Ao = get_A(C,x,y,z);
 Af = kron(eye(d*b),ones(1,eta))*Ao*Hs';
 
 M = get_M(n,x,y,z);
- 
+
 Ab = get_Ab(d,b,n,Ao,M,Hs);
 
 p = [px;py;pz];
@@ -367,7 +367,7 @@ b = 3;
 eta = n/b;
 d = 3;
 
-C = get_spine_C_3d(b);
+C = get_tetrahedral_spine_C_3d(b);
 [Hs,~] = get_H(s,r);
 
 pinned = zeros(n, 1);
@@ -452,7 +452,7 @@ b = 4;
 eta = n/b;
 d = 3;
 
-C = get_spine_C_3d(b);
+C = get_tetrahedral_spine_C_3d(b);
 [Hs,~] = get_H(s,r);
 
 pinned = zeros(n, 1);
@@ -518,7 +518,7 @@ disp(rref(A7));
 % I now generalize and see if this conjecture holds for much longer spines
 % with noise injection in their vertebra positions
 
-vert_max = 100; % Highest vertebra count - these matrices will get massive
+vert_max = 50; % Highest vertebra count - these matrices will get massive
 bar_endpoint = 0.5; % m
 a = [   0,              0,              0;
         bar_endpoint,     0,              -bar_endpoint;
@@ -540,7 +540,7 @@ for b = 2:vert_max
     eta = n/b;
     d = 3;
     
-    C = get_spine_C_3d(b);
+    C = get_tetrahedral_spine_C_3d(b);
     [Hs,~] = get_H(s,r);
 
     pinned = zeros(n, 1);
