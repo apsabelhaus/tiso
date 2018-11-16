@@ -20,6 +20,11 @@ c = 0.0001; % min tension
 Hhat = [eye(4), zeros(4,6)];
 options = optimoptions('quadprog','MaxIterations',1000);
 
+% Removing anchored points
+w = [0;0;0;0;1;1;1;1];
+W = diag(w);
+Wf = kron(eye(2), W);
+
 %% Vertical Case
 x = [0; 1; -1; 0; 0; 1; -1; 0];
 y = [0; -1; -1; 1; 1.5; 0.5; 0.5; 2.5];
@@ -40,10 +45,10 @@ fs = zeros(4,1);
 Kf = kron(eye(4),ones(1,4)); % 2 force dimensions
 Km = kron(eye(2),ones(1,4)); % 1 moment dimension
 B = [diag(-y) diag(x)];
-Af = Kf*An*Hhat';
-Am = Km*B*An*Hhat';
+Af = Kf*Wf*An*Hhat';
+Am = Km*B*Wf*An*Hhat';
 Ab = [Af;Am];
-bineq_m = [Kf*p;Km*B*p];
+bineq_m = [Kf*Wf*p;Km*B*Wf*p];
 
 % Ineq constraints. Ai has a negative applied because the form that
 % quadprog takes is Ai*q <= bi, and we want each q >= c, so -q <= -c
@@ -55,8 +60,8 @@ Aib = -eye(4);
 % Optimization Problem
 H = 2*eye(10); % so we get q'q instead of 0.5*q'q, doesn't really matter
 f = zeros(10,1);
-q1 = quadprog(H, f, [], [], An, p,[],[],[], options); % no tension constraint - feas
-q2 = quadprog(H, f, Ain, bi, An, p,[],[],[], options); % tension constraint - infeas
+q1 = quadprog(H, f, [], [], Wf*An, Wf*p,[],[],[], options); % no tension constraint - feas
+q2 = quadprog(H, f, Ain, bi, Wf*An, Wf*p,[],[],[], options); % tension constraint - infeas
 
 qs1 = quadprog(Hs, fs, Aib, bi, Ab, bineq_m, [], [], [], options); % cable forces - feas
 
@@ -79,7 +84,7 @@ p = [zeros(8,1); -g.*ones(8,1)];
 p(10) = Ry2 - g;
 p(16) = Ry8 - g;
 
-bineq_m = [Kf*p;Km*B*p];
+bineq_m = [Kf*Wf*p;Km*B*Wf*p];
 
 Ai = -Hhat;
 bi = -ones(4,1) * c;
@@ -87,8 +92,8 @@ bi = -ones(4,1) * c;
 % Solve the optimization problem
 H = 2*eye(10);
 f = zeros(10,1);
-q3 = quadprog(H, f, [], [], An, p,[],[],[],options); % no tension constraint - infeas
-q4 = quadprog(H, f, Ai, bi, An, p,[],[],[],options); % tension constraint - infeas
+q3 = quadprog(H, f, [], [], Wf*An, Wf*p,[],[],[],options); % no tension constraint - infeas
+q4 = quadprog(H, f, Ai, bi, Wf*An, Wf*p,[],[],[],options); % tension constraint - infeas
 
 qs2 = quadprog(Hs, fs, Aib, bi, Ab, bineq_m, [], [], [], options); % cable forces - feas
 
