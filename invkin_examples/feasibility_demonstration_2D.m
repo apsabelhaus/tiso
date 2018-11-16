@@ -60,6 +60,8 @@ q2 = quadprog(H, f, Ain, bi, An, p,[],[],[], options); % tension constraint - in
 
 qs1 = quadprog(Hs, fs, Aib, bi, Ab, bineq_m, [], [], [], options); % cable forces - feas
 
+plot_2d_tensegrity_invkin(C, x, y, 4, .02);
+
 %% Horizontal Case
 x = [0;-1;-1;1;1.5;0.5;0.5;2.5];
 y = [0;-1;1;0;0;-1;1;0];
@@ -89,3 +91,5 @@ q3 = quadprog(H, f, [], [], An, p,[],[],[],options); % no tension constraint - i
 q4 = quadprog(H, f, Ai, bi, An, p,[],[],[],options); % tension constraint - infeas
 
 qs2 = quadprog(Hs, fs, Aib, bi, Ab, bineq_m, [], [], [], options); % cable forces - feas
+
+plot_2d_tensegrity_invkin(C, x, y, 4, .02);
