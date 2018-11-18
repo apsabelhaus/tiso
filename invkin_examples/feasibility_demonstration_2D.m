@@ -16,9 +16,9 @@ C = [0  1  0  0  0 -1  0  0;  %  1, cable 1
      0  0  0  0  1  0 -1  0;  %  9, ...
      0  0  0  0  1  0  0 -1]; % 10, bar 6
 g = 9.81;
-c = 0.0001; % min tension
+c = 1; % min tension
 Hhat = [eye(4), zeros(4,6)];
-options = optimoptions('quadprog','MaxIterations',1000);
+options = optimoptions('quadprog','MaxIterations',100000);
 
 % Removing anchored points
 w = [0;0;0;0;1;1;1;1];
@@ -92,9 +92,78 @@ bi = -ones(4,1) * c;
 % Solve the optimization problem
 H = 2*eye(10);
 f = zeros(10,1);
-q3 = quadprog(H, f, [], [], Wf*An, Wf*p,[],[],[],options); % no tension constraint - infeas
-q4 = quadprog(H, f, Ai, bi, Wf*An, Wf*p,[],[],[],options); % tension constraint - infeas
+q3 = quadprog(H, f, [], [], Wf*An, Wf*p,[],[],[],options); % no tension constraint - infeas @ presolve
+q4 = quadprog(H, f, Ai, bi, Wf*An, Wf*p,[],[],[],options); % tension constraint - infeas @ presolve
 
 qs2 = quadprog(Hs, fs, Aib, bi, Ab, bineq_m, [], [], [], options); % cable forces - feas
 
 plot_2d_tensegrity_invkin(C, x, y, 4, .02);
+
+%% 3D 5-Vertebra Case with Anchor Removal
+% We should confirm the math here all makes sense. This demonstrates what
+% we want, but I don't really know how to explain it.
+% (1) Given enough iterations, both the nodal methods fail to converge to a
+% solution. THIS NEEDS AN EXPLANATION
+% (2) The rigid body method almost immediately produces a solution. My cost
+% function combines both the infinity norm of the cable tensions and the
+% two-norm. When comparing the values of the infeasible nodal solutions and
+% the rigid body method, we can see that the rigid body method produces
+% more optimal solutions.
+
+b = 5;
+s = 8*(b-1);
+r = 4*b;
+n = 5*b;
+eta = n/b;
+d = 3;
+c = 1; % min tension
+bar_endpoint = 1;
+g = 9.81;
+debugging = 0;
+options = optimoptions('quadprog','MaxIterations',100000);
+
+C = get_tetrahedral_spine_C_3d(b);
+
+w = ones(eta*b,1);
+w(1:5) = zeros(eta,1);
+w(21:25) = zeros(eta,1);
+W = diag(w);
+Wf = kron(eye(3),W);
+p = [zeros(eta*b,1);zeros(eta*b,1);-g*ones(eta*b,1)]; % don't need reactions b/c of anchor removal
+[Hs,~] = get_H(s,r);
+
+a = [   0,              0,              0;
+        bar_endpoint,     0,              -bar_endpoint;
+        -bar_endpoint,    0,              -bar_endpoint;
+        0,              bar_endpoint,     bar_endpoint;
+        0,              -bar_endpoint,    bar_endpoint]';
+    
+coordinates = noisy_coordinate_generator(a,b,bar_endpoint,bar_endpoint/100,pi/180,debugging);
+
+x = coordinates(1,:)';
+y = coordinates(2,:)';
+z = coordinates(3,:)';
+
+An = get_A(C,x,y,z);
+B = get_M(n,x,y,z);
+K = kron(eye(d*b),ones(1,eta));
+
+% Nodal Optimization Setup
+H = 2*eye(s+r);
+f = zeros(s+r,1);
+Ai = -Hs;
+bi = -ones(s,1) * c;
+
+% Rigid Body Optimization Setup
+Aib = [-eye(s);eye(s)];
+Af = K*Wf*An*Hs';
+Am = K*B*Wf*An*Hs';
+Ab = [Af;Am];
+beq_m = [K*Wf*p;K*B*Wf*p];
+fs = zeros(s,1);
+Hrb = eye(s+1);
+Hrb(s+1:s+1) = 0;
+
+[q5, ~, exitflag5, ~] = quadprog(H, f, [], [], Wf*An, Wf*p,[],[],[],options); % nodal, no tension constraints
+[q6, ~, exitflag6, ~] = quadprog(H, f, Ai, bi, Wf*An, Wf*p,[],[],[],options); % nodal, tension constraints
+[qs3, ~, exitflags3, ~] = quadprog(Hrb, [fs;0], [Aib [zeros(s,1);-ones(s,1)]], [bi;zeros(s,1)], [Ab zeros(2*d*b,1)], beq_m); % rigid body
