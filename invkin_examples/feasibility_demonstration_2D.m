@@ -138,7 +138,8 @@ a = [   0,              0,              0;
         0,              bar_endpoint,     bar_endpoint;
         0,              -bar_endpoint,    bar_endpoint]';
     
-coordinates = noisy_coordinate_generator(a,b,bar_endpoint,bar_endpoint/100,pi/180,debugging);
+% Make points noiser than they are in AbConstructionExample
+coordinates = noisy_coordinate_generator(a,b,bar_endpoint,bar_endpoint/10,5*pi/180,debugging);
 
 x = coordinates(1,:)';
 y = coordinates(2,:)';
@@ -167,3 +168,5 @@ Hrb(s+1:s+1) = 0;
 [q5, ~, exitflag5, ~] = quadprog(H, f, [], [], Wf*An, Wf*p,[],[],[],options); % nodal, no tension constraints
 [q6, ~, exitflag6, ~] = quadprog(H, f, Ai, bi, Wf*An, Wf*p,[],[],[],options); % nodal, tension constraints
 [qs3, ~, exitflags3, ~] = quadprog(Hrb, [fs;0], [Aib [zeros(s,1);-ones(s,1)]], [bi;zeros(s,1)], [Ab zeros(2*d*b,1)], beq_m); % rigid body
+
+plot_3d_tensegrity_invkin(C,s,w,x,y,z);

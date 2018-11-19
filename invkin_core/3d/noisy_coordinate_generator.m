@@ -14,7 +14,7 @@ function coordinates = noisy_coordinate_generator(a,b,bar_endpoint,distnoise,ang
         zn7a = normrnd(0,angnoise);
         
         % Adding noise and generating spine positions
-        xi(6*(body-1)+1:6*(body-1)+6) = [2*(body-1)*bar_endpoint + xn7p;
+        xi(6*(body-1)+1:6*(body-1)+6) = [1.5*(body-1)*bar_endpoint + xn7p;
                              0 + yn7p;
                              0 + zn7p;
                              0 + xn7a;
