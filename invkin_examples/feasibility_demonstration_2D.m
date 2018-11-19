@@ -48,7 +48,7 @@ B = [diag(-y) diag(x)];
 Af = Kf*Wf*An*Hhat';
 Am = Km*B*Wf*An*Hhat';
 Ab = [Af;Am];
-bineq_m = [Kf*Wf*p;Km*B*Wf*p];
+beq_m = [Kf*Wf*p;Km*B*Wf*p];
 
 % Ineq constraints. Ai has a negative applied because the form that
 % quadprog takes is Ai*q <= bi, and we want each q >= c, so -q <= -c
@@ -63,7 +63,7 @@ f = zeros(10,1);
 q1 = quadprog(H, f, [], [], Wf*An, Wf*p,[],[],[], options); % no tension constraint - feas
 q2 = quadprog(H, f, Ain, bi, Wf*An, Wf*p,[],[],[], options); % tension constraint - infeas
 
-qs1 = quadprog(Hs, fs, Aib, bi, Ab, bineq_m, [], [], [], options); % cable forces - feas
+qs1 = quadprog(Hs, fs, Aib, bi, Ab, beq_m, [], [], [], options); % cable forces - feas
 
 plot_2d_tensegrity_invkin(C, x, y, 4, .02);
 
@@ -81,10 +81,14 @@ Ry2 = (8 - (8.5/3.5)) * g;
 % Set up constraint matrices
 An = [C'*diag(C*x); C'*diag(C*y)];
 p = [zeros(8,1); -g.*ones(8,1)];
-p(10) = Ry2 - g;
-p(16) = Ry8 - g;
+% p(10) = Ry2 - g;
+% p(16) = Ry8 - g;
 
-bineq_m = [Kf*Wf*p;Km*B*Wf*p];
+B = [diag(-y) diag(x)];
+Af = Kf*Wf*An*Hhat';
+Am = Km*B*Wf*An*Hhat';
+Ab = [Af;Am];
+beq_m = [Kf*Wf*p;Km*B*Wf*p];
 
 Ai = -Hhat;
 bi = -ones(4,1) * c;
@@ -95,7 +99,7 @@ f = zeros(10,1);
 q3 = quadprog(H, f, [], [], Wf*An, Wf*p,[],[],[],options); % no tension constraint - infeas @ presolve
 q4 = quadprog(H, f, Ai, bi, Wf*An, Wf*p,[],[],[],options); % tension constraint - infeas @ presolve
 
-qs2 = quadprog(Hs, fs, Aib, bi, Ab, bineq_m, [], [], [], options); % cable forces - feas
+qs2 = quadprog(Hs, fs, Aib, bi, Ab, beq_m, [], [], [], options); % cable forces - feas
 
 plot_2d_tensegrity_invkin(C, x, y, 4, .02);
 
@@ -138,7 +142,7 @@ a = [   0,              0,              0;
         0,              bar_endpoint,     bar_endpoint;
         0,              -bar_endpoint,    bar_endpoint]';
     
-% Make points noiser than they are in AbConstructionExample
+% Make points noisier than they are in AbConstructionExample
 coordinates = noisy_coordinate_generator(a,b,bar_endpoint,bar_endpoint/5,5*pi/180,debugging);
 
 x = coordinates(1,:)';
@@ -161,12 +165,11 @@ Af = K*Wf*An*Hs';
 Am = K*B*Wf*An*Hs';
 Ab = [Af;Am];
 beq_m = [K*Wf*p;K*B*Wf*p];
-fs = zeros(s,1);
+fs = zeros(s+1,1);
 Hrb = eye(s+1);
-Hrb(s+1:s+1) = 0;
 
 [q5, ~, exitflag5, ~] = quadprog(H, f, [], [], Wf*An, Wf*p,[],[],[],options); % nodal, no tension constraints
 [q6, ~, exitflag6, ~] = quadprog(H, f, Ai, bi, Wf*An, Wf*p,[],[],[],options); % nodal, tension constraints
-[qs3, ~, exitflags3, ~] = quadprog(Hrb, [fs;0], [Aib [zeros(s,1);-ones(s,1)]], [bi;zeros(s,1)], [Ab zeros(2*d*b,1)], beq_m); % rigid body
+[qs3, ~, exitflags3, ~] = quadprog(Hrb, fs, [Aib [zeros(s,1);-ones(s,1)]], [bi;zeros(s,1)], [Ab zeros(2*d*b,1)], beq_m); % rigid body
 
 plot_3d_tensegrity_invkin(C,s,w,x,y,z);
