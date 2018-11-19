@@ -41,7 +41,7 @@ function plot = plot_3d_tensegrity_invkin(C,s,w,x,y,z)
         xi = [x(i1) x(i2)];
         yi = [y(i1) y(i2)];
         zi = [z(i1) z(i2)];
-        plot3(xi,yi,zi,'Color',[0,0,0]);
+        plot3(xi,yi,zi,'Color',[0,0,0],'LineWidth',2);
     end
     
 end

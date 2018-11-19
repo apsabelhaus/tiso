@@ -125,8 +125,8 @@ options = optimoptions('quadprog','MaxIterations',100000);
 C = get_tetrahedral_spine_C_3d(b);
 
 w = ones(eta*b,1);
-w(1:5) = zeros(eta,1);
-w(21:25) = zeros(eta,1);
+w(1:eta) = zeros(eta,1);
+w(end-eta+1:end) = zeros(eta,1);
 W = diag(w);
 Wf = kron(eye(3),W);
 p = [zeros(eta*b,1);zeros(eta*b,1);-g*ones(eta*b,1)]; % don't need reactions b/c of anchor removal
@@ -139,7 +139,7 @@ a = [   0,              0,              0;
         0,              -bar_endpoint,    bar_endpoint]';
     
 % Make points noiser than they are in AbConstructionExample
-coordinates = noisy_coordinate_generator(a,b,bar_endpoint,bar_endpoint/10,5*pi/180,debugging);
+coordinates = noisy_coordinate_generator(a,b,bar_endpoint,bar_endpoint/5,5*pi/180,debugging);
 
 x = coordinates(1,:)';
 y = coordinates(2,:)';
