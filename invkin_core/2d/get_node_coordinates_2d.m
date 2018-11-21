@@ -14,9 +14,14 @@ function [coordinates] = get_node_coordinates_2d(local_frame, state, debugging)
 % Inputs:
 %   local_frame = matrix with all points in a local frame for one body.
 %       Size 2 x n_i (node coordinates are column vectors.)
+%
 %   state = vector, size 3*b where b is the number of rigid bodies.
 %       Specifies the translations and rotations for each body.
 %       (3 states are x, z, \gamma.)
+%
+%   debugging = level of debugging/verbosity from this script. Options:
+%       0 = no output except for errors
+%       1 or 2 = Verbose output, lots of dimensions and matrices and whatnot.
 %
 % Outputs:
 %   coordinates = matrix, 2 x n_i*b, for all 2 position coordinates for all
@@ -26,7 +31,7 @@ function [coordinates] = get_node_coordinates_2d(local_frame, state, debugging)
 b = size(state,1) / 3;
 n_i = size(local_frame, 2);
 
-if debugging
+if debugging >= 2
     b
     n_i
 end
@@ -38,7 +43,7 @@ coordinates = zeros( 2, n_i * b);
 for i = 1:b
     % for ease, split off the state for this rigid body
     state_i = state(3*(i-1) + 1 : 3*i);
-    if debugging
+    if debugging >= 2
         state_i
     end
     % The nodes are at the new x z coordinates + rotation on the original
@@ -51,7 +56,7 @@ for i = 1:b
     % apply the rotation
     rotated_frame = rot * local_frame;
     
-    if debugging
+    if debugging >= 2
         rotated_frame
     end
     

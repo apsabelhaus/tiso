@@ -27,8 +27,16 @@ addpath( genpath('../invkin_plotting') );
 
 %% Set up the parameters
 
-% debugging or not
+% Debugging level.
+% 0 = no output except for errors
+% 1 = Starting message, results from quadprog
+% 2 = Verbose output of status.
 debugging = 1;
+
+% If appropriate, output a starting message.
+if debugging >= 1
+    disp('Starting horizontal spine 2d rigid body inverse kinematics example...');
+end
 
 % minimum cable force density
 %q_min = 0; % units of N/m, depending on m and g
@@ -47,7 +55,7 @@ a = [   0,              0;
         -bar_endpoint,  -bar_endpoint;
         0,              bar_endpoint]';
     
-if debugging
+if debugging >= 2
     a
 end
 
@@ -84,7 +92,7 @@ r = size(C,1) - s;
 % number of nodes
 n = size(C, 2);
 
-if debugging
+if debugging >= 2
     C
 end
 
@@ -137,7 +145,7 @@ xi(4:6) = [     bar_endpoint * (3/2);
                 0;
                -pi/2 + pi/16];
             
-if debugging
+if debugging >= 2
     xi
 end
 
@@ -147,7 +155,7 @@ end
 % calculate from position trajectory
 coordinates = get_node_coordinates_2d(a, xi, debugging);
 
-if debugging
+if debugging >= 2
     coordinates
 end
 
@@ -172,7 +180,7 @@ end
 % com is 2 x 1.
 com = sum(mass_positions, 2) ./ (m_node*n);
 
-if debugging
+if debugging >= 2
     com
 end
 
