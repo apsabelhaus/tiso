@@ -20,8 +20,8 @@ function [coordinates] = get_node_coordinates_2d(local_frame, state, debugging)
 %       (3 states are x, z, \gamma.)
 %
 %   debugging = level of debugging/verbosity from this script. Options:
-%       0 = no output except for errors
-%       1 or 2 = Verbose output, lots of dimensions and matrices and whatnot.
+%       0 or 1 = no output except for errors
+%       2 = Verbose output, lots of dimensions and matrices and whatnot.
 %
 % Outputs:
 %   coordinates = matrix, 2 x n_i*b, for all 2 position coordinates for all

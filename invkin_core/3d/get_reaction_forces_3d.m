@@ -71,7 +71,7 @@ for i=1:n
     end
 end
 
-if debugging
+if debugging >= 2
     v
     coords_v
 end
@@ -92,7 +92,7 @@ end
 % com is 3 x 1.
 com = sum(mass_positions, 2) ./ n;
 
-if debugging
+if debugging >= 2
     com
 end
 
@@ -110,7 +110,7 @@ mom_com = [ - m_tot * g * com(2);
             - m_tot * g * com(1);
               0];
           
-if debugging
+if debugging >= 2
     mom_com
 end
         
@@ -133,7 +133,7 @@ mom_reactions_coeff = [  zeros(1, v),    -coords_v(3, :),   coords_v(2,:);
                          coords_v(3,:),   zeros(1, v),     -coords_v(1,:);
                         -coords_v(2,:),   coords_v(1,:),    zeros(1,v)];
 
-if debugging
+if debugging >= 2
     mom_reactions_coeff
 end
                     
@@ -193,7 +193,7 @@ for i=1:n
 end
 
 % some checking
-if debugging
+if debugging >= 2
     A
     b
     R

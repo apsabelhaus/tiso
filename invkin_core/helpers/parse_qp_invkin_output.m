@@ -32,15 +32,19 @@ switch exitflag
         disp(output_info.iterations);
         
     case -2
+        disp(' ');
         disp('No solution found. Either there is no solution to one of the constraints, or there is no solutions that satisfes all.');
         disp('This may mean one of a few things. Possible reasons:');
         disp('1) Equilibrium constraint has no solutions');
         disp('2) Only solutions to equilibrium constraint cause cables to be in compression (tension constraint violation)');
         disp('3) If used/implemented, the input saturation constraint may not be possible.');
+        disp(' ');
         disp('Recommendations:');
         disp('Set verbosity level higher for more information.');
         disp('Set a lower minimum tension, c.');
-        disp('Examine output for dimensionality and rank of Ab.');
+        disp('Examine output for dimensionality and rank of equilibrium matrix.');
+        disp(' ');
+        error('Inverse Kinematics calculation failed, now exiting.');
         
     otherwise
         disp('Quadprog exit flag not recognized, set to a higher debugging level for more information');

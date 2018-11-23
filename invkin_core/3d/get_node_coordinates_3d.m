@@ -17,6 +17,10 @@ function [coordinates] = get_node_coordinates_3d(local_frame, state, debugging)
 %   state = vector, size 6*b where b is the number of rigid bodies.
 %       Specifies the translations and rotations for each body.
 %
+%   debugging = level of debugging/verbosity from this script. Options:
+%       0 or 1 = no output except for errors
+%       2 = Verbose output, lots of dimensions and matrices and whatnot.
+%
 % Outputs:
 %   coordinates = matrix, 3 x n_i*b, for all 3 position coordinates for all
 %   n_i nodes of b rigid bodies.
@@ -25,7 +29,7 @@ function [coordinates] = get_node_coordinates_3d(local_frame, state, debugging)
 b = size(state,1) / 6;
 n_i = size(local_frame, 2);
 
-if debugging
+if debugging >= 2
     b
     n_i
 end
@@ -37,7 +41,7 @@ coordinates = zeros( 3, n_i * b);
 for i = 1:b
     % for ease, split off the state for this rigid body
     state_i = state(6*(i-1) + 1 : 6*i);
-    if debugging
+    if debugging >= 2
         state
     end
     % The nodes are at the new xyz coordinates + rotation on the original
@@ -54,7 +58,7 @@ for i = 1:b
     rot_x = makehgtform('xrotate', state_i(4));
     rot_x = rot_x(1:3, 1:3);
     
-    if debugging
+    if debugging >= 2
         rot_x
         rot_y
         rot_z
@@ -63,7 +67,7 @@ for i = 1:b
     % apply all the rotations
     rotated_frame = rot_z * rot_y * rot_x * local_frame;
     
-    if debugging
+    if debugging >= 2
         rotated_frame
     end
     

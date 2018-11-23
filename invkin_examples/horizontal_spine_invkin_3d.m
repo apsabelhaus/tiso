@@ -17,8 +17,16 @@ addpath( genpath('../invkin_core') );
 
 %% Set up the parameters
 
-% debugging or not
+% Debugging level.
+% 0 = no output except for errors
+% 1 = Starting message, results from quadprog
+% 2 = Verbose output of status.
 debugging = 1;
+
+% Startup message if appropriate
+if debugging >= 1
+    disp('Starting horizontal spine 3D inverse kinematics example...');
+end
 
 % minimum cable force density
 q_min = 0; % units of N/m, depending on m and g
@@ -29,7 +37,7 @@ q_min = 0; % units of N/m, depending on m and g
 % spine. Nodes are column vectors [x; y; z], but for ease, written as transposed
 % here.
 
-bar_endpoint = 0.5 % meters. 50 cm.
+bar_endpoint = 0.5; % meters. 50 cm.
 
 a = [   0,              0,              0;
         bar_endpoint,     0,              -bar_endpoint;
@@ -37,7 +45,7 @@ a = [   0,              0,              0;
         0,              bar_endpoint,     bar_endpoint;
         0,              -bar_endpoint,    bar_endpoint]';
     
-if debugging
+if debugging >= 2
     a
 end
 
@@ -85,7 +93,7 @@ C(1:s, :) = [Cc_vertical; Cc_saddle];
 % kron.
 C(s+1 : end, :) = kron( eye(b), Cv);
 
-if debugging
+if debugging >= 2
     C
 end
 
@@ -148,7 +156,7 @@ xi(7:12) = [    bar_endpoint * (3/4);
 % Let's translate and rotate the moving vertebra 'up' a bit, to check. 
 % That's 
             
-if debugging
+if debugging >= 2
     xi
 end
 
@@ -158,7 +166,7 @@ end
 % calculate from position trajectory
 coordinates = get_node_coordinates_3d(a, xi, debugging);
 
-if debugging
+if debugging >= 2
     coordinates
 end
 
