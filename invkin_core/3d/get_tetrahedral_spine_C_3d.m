@@ -4,7 +4,10 @@
 % tensegrity comprising Belka
 function C = get_tetrahedral_spine_C_3d(b)
     % Cable Source Matrix
-    Cso = [0 1 0 0 0;
+    Cso = [1 0 0 0 0; % TEST CABLES
+           1 0 0 0 0; % CENTRAL VERT NODE CONNECTED TO NODES 2/3
+        
+           0 1 0 0 0;
            0 0 1 0 0;
            0 0 0 1 0;
            0 0 0 0 1;
@@ -15,7 +18,10 @@ function C = get_tetrahedral_spine_C_3d(b)
            0 0 0 0 1];
     
     % Cable Sink Matrix
-    Csi = [0 -1 0 0 0;
+    Csi = [0 -1 0 0 0; % TEST CABLES
+           0 0 -1 0 0;
+        
+           0 -1 0 0 0;
            0 0 -1 0 0;
            0 0 0 -1 0;
            0 0 0 0 -1;
