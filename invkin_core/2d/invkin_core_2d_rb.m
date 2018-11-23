@@ -129,10 +129,20 @@ r = size(C,1) - s; % rows of C is total number of members, and s is
 % The number of nodes per rigid body is
 %eta = n / b;
 % Actually, now, removing the nodes that are not being considered (the
-% anchors), we really want to calculate eta using h here, where h < n is
+% anchors), we really want to calculate eta using h here, where h <= n is
 % the number of remaining nodes.
+% THIS WORKS EVEN IF w = ones, since in that case, h = n.
 h = nnz(w);
 eta = h / b;
+
+% A warning message here, since it's easy to mess up with the anchor
+% removal code, and since no dimensional errors are generated if so.
+if debugging >= 1
+    if h < n
+        disp('You have removed anchored nodes from the formulation.');
+        disp('Remember to change b, the number of bodies, or else you will get errors.');
+    end
+end
 
 % For later work, generalize: this is the dimensionality of the problem
 % (2 dimensional.)
@@ -190,7 +200,17 @@ Aw = Wf * A;
   
 % The Af matrix can then be collapsed to size (2b x s) from size (2n x
 % (s+r))
-Af = K * Aw * H_hat';
+Af = K * Aw * H_hat'; 
+% Af = K * A * H_hat';
+
+% We can do a quick check: if any individual column is zero, that means
+% that a cable somehow has zero contribution to the force balance, which is
+% not possible and means that the user specified some incorrect combination
+% of w and b.
+% Quick MATLAB trick:
+if any(~any(Af))
+    error('Error, some columns in Af are zero. This likely means that you have removed anchors without changing b, the number of bodies, or otherwise specified incorrect parameters. Exiting.');
+end
 
 if debugging >= 2
     disp('Equilibrium constraint, force:');
@@ -349,6 +369,18 @@ if debugging >= 2
     disp('Optimal force densities are:');
     q_opt
 end
+
+% We also need to check, afterwards, if the constraints were satisfied.
+% In particular, the 'max iterations exceeded' may emit solutions that are
+% OK-enough but also may emit invalid solutions.
+% So, quick check, independent of debugging level.
+% If any element of Ab * q_opt does not equal pb,
+% e.g. they are outside some tolerance level epsilon,
+eps = 1e-10;
+if any( (Ab * q_opt - pb) > eps )
+    warning('invkin_core_2d_rb returned a result but the constraints were NOT satisfied, solution is likely invalid.');
+end
+
 
 %% Calculate the cable forces from the force densities.
 

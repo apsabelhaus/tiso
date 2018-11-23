@@ -26,8 +26,14 @@ switch exitflag
         disp('Result found, valid solution returned.');
         
     case 0
-        disp('Maximum iterations exceeded. The solution may not be valid, though is likely close.');
-        disp('Manually set the options for quadprog to a higher number of iterations if desired.');
+        disp(' ');
+        warning('Maximum iterations exceeded. The solution may not be valid, and is likely invalid.');
+        disp(' ');
+        disp('This may be caused by many conditions, but in particular, may happen if the equilibrium constraint matrix is rank-deficient but the constraint is inconsistent.');
+        disp('For example, if A is tall but has rank less than size(q), but rank([A,b]) > rank(A), in which case the static equilibrium eqns are inconsistent, and no solution exists.')
+        disp('Consider removing anchors, if possible.');
+        disp(' ');
+        disp('Alternatively - may be a numerical issue, so you may try manually setting the options for quadprog to a higher number of iterations if desired.');
         disp('Number of iterations were:');
         disp(output_info.iterations);
         

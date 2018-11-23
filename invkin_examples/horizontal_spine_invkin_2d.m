@@ -99,10 +99,18 @@ end
 % gravitational constant
 g = 9.81;
 
-% vector of masses of each node
+% mass per vertebra
 % let's say each vertebra weighs 0.8 kg. Thta's about 1.7 lbs, which seems
 % right to Drew if motors are included.
 m_i = 0.8;
+
+% Note here that I've used m_i as per-body not per-node.
+% Probably accidentally changed notation w.r.t. T-CST 2018 paper.
+% 4 nodes per body, so
+m_node = m_i/4;
+
+% and in vector form,
+m = ones(n, 1) * m_node;
 
 % Example of how to do the 'anchored' analysis.
 % Declare a vector w \in R^n, 
@@ -114,9 +122,20 @@ w = [0; 0; 0; 0; 1; 1; 1; 1];
 % Including all nodes:
 % w = ones(n,1);
 
-% In case we need it later, we can calculate the number of 'remaining'
-% nodes, the not-anchored ones. Call that 'h'.
-h = nnz(w);
+% IMPORTANT! If chosing to remove nodes, must change 'b' also, or else inv
+% kin will FAIL.
+
+% We also need to declare which nodes are pinned (with external reaction
+% forces) and which are not. 
+% We're choosing not to have this be the same as w, since there are some
+% nodes to "ignore" for w which are not necessarily built in to the ground
+% for "pinned". Example, nodes inside the leftmost vertebra, where we're
+% deciding to assume that only the tips of its "Y" are supported.
+
+% So, only nodes 2 and 3 are pinned.
+pinned = zeros(n,1);
+pinned(2) = 1;
+pinned(3) = 1;
 
 %% Trajectory of positions
 
@@ -159,91 +178,34 @@ if debugging >= 2
     coordinates
 end
 
-% Reaction forces
-% Hard-coded for this structure. Draw out a free body diagram to confirm
-% this, or to see how you'd do it for another structure.
+% Split up the coordinates.
+% The invkin core routine expects these to be column vectors, so a
+% transpose is needed also
+x = coordinates(1, :)';
+y = coordinates(2, :)';
 
-% get the center of mass for combined structure (don't need to split by
-% rigid body.)
-% Note here that I've used m_i as per-body not per-node.
-% Probably accidentally changed notation w.r.t. T-CST 2018 paper.
-% 4 nodes per body, so
-m_node = m_i/4;
+% Reaction forces can be calculated by this helper, which assumes that only
+% gravity is present as an external force.
+[px, py] = get_reaction_forces_2d(x, y, pinned, m, g, debugging);
 
-% first, the positions of each mass:
-mass_positions = zeros(size(coordinates));
-for i=1:n
-    mass_positions(:,i) = m_node * coordinates(:,i);
-end
+% for more details, you can look at commits to the library before Nov. 2018
+% where this reaction force/moment balance was written out by hand.
 
-% center of mass (com) is sum over each row, divide by total mass.
-% com is 2 x 1.
-com = sum(mass_positions, 2) ./ (m_node*n);
-
-if debugging >= 2
-    com
-end
-
-% Assume reaction forces in z and x at nodes 2 and 3.
-% Solve AR*[R2; R3] = bR.
-% AR has two components: one due to force balance, the other
-% due to moment balance.
-% We know the following, for our example (again, hard-coded:)
-% 1) the reaction forces each act at bar_endpoint away from the origin
-% (when we're summing moments around the origin)
-% 2) there are no external moments in the x-direction, only z
-% 3) therefore, we need a moment balance that includes all 4 reaction force
-% terms (R2x, R2z, R3x, R3z), and both mg terms are around the individual
-% COMs.
-
-% ...see Drew's notes, or derive this yourself!
-% abbreviation: bar_endpoint = be.
-be = bar_endpoint;
-% 3 rows are for sum x, sum z, moments.
-AR = [1     0       1       0;
-      0     1       0       1;
-      be   -be     -be      -be];
-
-bR = [0;
-      2*m_i*g;
-      2*m_i*g*(com(1,1))];
-  
-% solve. To-Do: either...
-%       1) pose as an optimization problem to deal with static
-%       indeterminacy when it arises
-%       2) incorporate this into the optimization for the force densities?
-R = AR\bR;
-
-% R = [R2x, R2z, R3x, R3z]
-
-% Create the vector of external forces at each node.
-px = zeros(n,1);
-pz = zeros(n,1);
-
-% Only x forces are at 2 and 3.
-px(2) = R(1);
-px(3) = R(3);
-% insert the reaction forces in z
-pz(2) = R(2);
-pz(3) = R(4);
+% Since this was just a calculation of the reaction forces, we ALSO need to
+% add in the external forces themselves (grav forces) for use as the whole
+% inverse kinematics problem.
 
 % Add the gravitational reaction forces for each mass.
-for i=1:n
-    pz(i) = pz(i) - m_node*g;
-end
+% a slight abuse of MATLAB's notation: this is vector addition, no indices
+% needed, since all are \in R^n.
+py = py + -m*g;
 
 
 %% Solve the inverse kinematics problem
 %[f_opt, q_opt, Ab, pb] = invkin_core_2d_rb(x, z, px, pz, C, COMs, s, b, q_min, debugging)
 
-% Split up the coordinates.
-% The invkin core routine expects these to be column vectors, so a
-% transpose is needed also
-x = coordinates(1, :)';
-z = coordinates(2, :)';
-
 % Solve
-[f_opt, q_opt, Ab, pb] = invkin_core_2d_rb(x, z, px, pz, w, C, s, b, q_min, debugging);
+[f_opt, q_opt, Ab, pb] = invkin_core_2d_rb(x, y, px, py, w, C, s, b, q_min, debugging);
 
 % Seems correct, intuitively!
 % Cable 1 is horizontal, below.
@@ -274,7 +236,7 @@ z = coordinates(2, :)';
 radius = 0.02; % meters.
 
 % Plot.
-plot_2d_tensegrity_invkin(C, x, z, s, radius);
+plot_2d_tensegrity_invkin(C, x, y, s, radius);
 
 
 
