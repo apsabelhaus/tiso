@@ -534,7 +534,7 @@ g = 9.81;
 % (4) Rank of A
 for b = 2:vert_max
     % Parameters
-    s = 8*(b-1);
+    s = 10*(b-1); % SHOULD BE 8, 10 FOR TESTING
     r = 4*b;
     n = 5*b;
     eta = n/b;
