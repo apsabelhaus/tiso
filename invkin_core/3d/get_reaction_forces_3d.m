@@ -59,9 +59,6 @@ function [px, py, pz] = get_reaction_forces_3d(coordinates, pinned, m, g, debugg
 %   3) calculate moment contribution due to (unknown) rxn forces
 %   4) solve, using least squares, for rxn forces and plug in.
 
-% A word of caution as of 2018-07-24:
-disp('get_reaction_forces_3d WARNING: there is a sign error somewhere here, the reaction forces are in the opposite direction of what is expected. You could flip the sign of the result or fix the script. but beware in any case.');
-
 %% setup
 
 % number of nodes
@@ -100,26 +97,6 @@ if debugging >= 1
         disp('with reaction forces (treat them as anchors.)');
     end
 end
-
-% % need to remove the no-reaction-forces elements from the 'coordinates'
-% % matrix to make computations easier down below.
-% % the result should now be 3 x v, reduced from 3 x n
-% coords_v = zeros(3, v);
-% % TO-DO: efficiency improvements. We can't rely on "remove the zeroed-out
-% % nodes" because there may be a force applied at a node with coordinates
-% % (0, 0, 0). So, keep a counter instead.
-% next_node = 1;
-% for i=1:n
-%     if pinned(i)
-%         coords_v(:, next_node) = coordinates(:, i);
-%         next_node = next_node + 1;
-%     end
-% end
-% 
-% if debugging >= 2
-%     v
-%     coords_v
-% end
 
 %% 1)
 
@@ -160,23 +137,6 @@ Ar = zeros(6, 3*v);
 % The three top rows of Ar:
 Ar(1:3, :) = kron(eye(3), ones(v,1)');
 
-% 
-% % center of mass is at the sum of each coordinate * m_i divided by n.
-% 
-% % specifying the mass positions using linear algebra would need a tensor
-% % and I'm too busy to figure that out right now
-% mass_positions = zeros(size(coordinates));
-% for i=1:n
-%     mass_positions(:,i) = m(i) * coordinates(:,i);
-% end
-% 
-% % center of mass (com) is sum over each row, divide by n.
-% % com is 3 x 1.
-% com = sum(mass_positions, 2) ./ n;
-% 
-% if debugging >= 2
-%     com
-% end
 
 %% 2)
 
@@ -223,42 +183,6 @@ ext_M = B * ext_F;
 % plug in. These should be the last 3 entries into br.
 br(4:end) = ext_M;
 
-% % As a note on matrix dimensions, we're looking at v reaction forces in 3
-% % dimensions each, so when solving A R = b, R is 3v x 1, b is 3 x 1, so A
-% % must be 3 x 3v.
-% 
-% % The moment due to the center of mass (having already evaluated the cross
-% % product) is nmg * COM in y or x respectively (there are n point masses)
-% mom_com = [ - m_tot * g * com(2);
-%             - m_tot * g * com(1);
-%               0];
-%           
-% if debugging >= 2
-%     mom_com
-% end
-        
-% The left-hand side consists of the vectors from each force to the COM.
-% Evaluating the cross product, we get the moment due to a force
-% F = [Fx; Fy; Fz] at point [x; y; z] by the matrix equation A F, where
-% A = [ 0,  -z, y;
-%       z,  0,  -x;
-%       -y, x,  0];
-%
-% Since we're treating the reaction forces as R = [Fx1, Fx2, ... Fxv, Fy1,
-% ...], we'll do the sum of moments for example in x for all forces as
-% [ 0_s, -z_1 ... -zv, y1 ... yv]
-
-% left-hand side size is 3 x 3v
-% insert individual components. coords_v(1, i) is x-coord for node i =
-% 1...v (the ones with reaction forces.)
-
-% mom_reactions_coeff = [  zeros(1, v),    -coords_v(3, :),   coords_v(2,:);
-%                          coords_v(3,:),   zeros(1, v),     -coords_v(1,:);
-%                         -coords_v(2,:),   coords_v(1,:),    zeros(1,v)];
-% 
-% if debugging >= 2
-%     mom_reactions_coeff
-% end
                     
 %% 3)
 
@@ -295,21 +219,6 @@ B_p = [ zosp',     -z_pinned',   y_pinned';
 % and plug in:
 Ar(4:end, :) = B_p;
 
-% % Set up the total problem. we need to do the force balance (pretty
-% % trivial) to stack with the moment balance
-% 
-% force_com = [ 0; 0; -m_tot * g]; % 3 x 1
-% % sum the forces along each dimension. Similar to the moments except no
-% % coordinates.
-% % also is size 3 x 3v
-% force_reactions_coeff = [ ones(1, v),   zeros(1, v),    zeros(1, v);
-%                           zeros(1, v),  ones(1, v),     zeros(1, v);
-%                           zeros(1, v),  zeros(1, v),    ones(1, v)];
-% 
-% % Then, the left-hand-side and right-hand-side matrices are
-% A = [force_reactions_coeff; mom_reactions_coeff];
-% b = [force_com; mom_com];
-% 
 
 %% 4) 
 

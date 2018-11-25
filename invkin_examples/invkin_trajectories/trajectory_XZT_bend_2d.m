@@ -1,0 +1,53 @@
+% trajectory_XZG_bend_2.m
+
+% This function returns a trajectory for a 2d, single-body tensegrity that
+% bends around the Y+ axis, according to the inverse kinematics script, in either direction.
+% It includes full position state information, and is a kinematic
+% trajectory (NOT dynamic.)
+
+function [xi_all] = trajectory_XZT_bend_2d(translation_0, rotation_0, max_sweep, num_points)
+% Inputs:
+%   translation_0 = translation of CoM of moving body, at sweep = 0. For the
+%       horizontal 2d spine, a good choice is bar_endpoint * (2/3).
+%       Should be \in R^2 for two dimensions.
+%   rotation_0 = rotation angle for *both* rigid bodies at sweep = 0. The
+%       motivation here is that the local frame can be specified
+%       arbitrarily for each body, then orientation can be corrected in
+%       this script. (It's just plugged into the return value.)
+%   max_sweep = the maximum sweep angle for the bend. Trajectory starts at
+%       just 'translation' for sweep = 0, then rotates around the origin
+%       (NOT the local frame) up to max_sweep.
+%   num_points = the number of timesteps/waypoints in this trajectory.
+% Outputs:
+%   xi_all = system states (kinematic! no velocities!) for each body.
+%       That's 3 per body, 2 bodies, so \xi \in R^{6 x num_points}.
+
+% The "first" body is assumed not to move, has its center (or wherever the
+% local frame is references from) at the origin, with a rotation given from
+% the input.
+xi_all = zeros(6, num_points);
+% First body rotation. xi is [x, y, theta]
+xi_all(3,:) = rotation_0;
+
+% We'll span out all the angles to insert.
+% beta is sweep angle.
+beta_0 = 0;
+beta = linspace(beta_0, max_sweep, num_points)';
+
+% In order to keep the moving body parallel to the sweept-out centerling
+% (e.g. rotating around the origin), the sweep angle and initial angle add.
+% abuse some matlab functionality which patterns out scalars to vectors
+% automatically:
+xi_all(6,:) = rotation_0 + beta;
+
+% Finally, do all the positions of the center (or, origin of local frame)
+% for the moving body.
+for i=1:num_points
+    % At the i-th angle, CoM position is translation rotated around by this
+    % beta. The x and y coordinates are
+    xi_all(4:5,i) = [cos(beta(i)),    -sin(beta(i));
+                     sin(beta(i)),     cos(beta(i))] * translation_0;
+    % aren't rotation matrices nice?
+end
+    
+end
