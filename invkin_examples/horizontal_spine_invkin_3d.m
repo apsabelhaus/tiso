@@ -177,9 +177,6 @@ end
 
 [px, py, pz] = get_reaction_forces_3d(coordinates, pinned, m, g, debugging);
 
-% slight hack for now with the sign error:
-px = -px; py = -py; pz = -pz;
-
 % Add the gravitational reaction forces for each mass.
 for i=1:n
     pz(i) = pz(i) - m(i)*g;

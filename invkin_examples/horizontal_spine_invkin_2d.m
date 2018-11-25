@@ -60,9 +60,9 @@ if debugging >= 2
 end
 
 % number of rigid bodies
-% b = 2;
+b = 2;
 % When removing the anchor nodes, it's like removing one of the bodies:
-b = 1;
+% b = 1;
 
 % Configuration matrix for WHOLE STRUCTURE. (in future, pattern out.)
 
@@ -118,9 +118,9 @@ m = ones(n, 1) * m_node;
 % For this example, want to treat body 1 as the anchored nodes.
 % So, we zero-out anchored nodes 1 through 4, and keep nodes 5-8
 % (which is vertebra two.)
-w = [0; 0; 0; 0; 1; 1; 1; 1];
+% w = [0; 0; 0; 0; 1; 1; 1; 1];
 % Including all nodes:
-% w = ones(n,1);
+w = ones(n,1);
 
 % IMPORTANT! If chosing to remove nodes, must change 'b' also, or else inv
 % kin will FAIL.
@@ -197,12 +197,11 @@ y = coordinates(2, :)';
 
 % Add the gravitational reaction forces for each mass.
 % a slight abuse of MATLAB's notation: this is vector addition, no indices
-% needed, since all are \in R^n.
+% needed, since py and m are \in R^n.
 py = py + -m*g;
 
 
 %% Solve the inverse kinematics problem
-%[f_opt, q_opt, Ab, pb] = invkin_core_2d_rb(x, z, px, pz, C, COMs, s, b, q_min, debugging)
 
 % Solve
 [f_opt, q_opt, Ab, pb] = invkin_core_2d_rb(x, y, px, py, w, C, s, b, q_min, debugging);

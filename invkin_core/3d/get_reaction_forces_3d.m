@@ -16,7 +16,8 @@ function [px, py, pz] = get_reaction_forces_3d(coordinates, pinned, m, g, debugg
 %       node (i.e., it is pinned) or with = 0 free floating.
 %   m = n x 1 vector of the mass of each individual node
 %   g = gravitational constant.
-%   debugging = boolean, turns on verbose messaging.
+%   debugging = verbosity. 0 = none, 1 = messages, 2 = info about matrices
+%       and vectors being calculated.
 %
 % Outputs:
 %   px = n x 1 vector of reaction forces in the x direction at each node
@@ -24,18 +25,44 @@ function [px, py, pz] = get_reaction_forces_3d(coordinates, pinned, m, g, debugg
 %   pz = same, for z
 %
 
+% NOTE: this force balance is NOT the same directionality as the cable net
+% itself. Gravity is in a different direction.
+% For example:
+%
+%   Cable net solves \sum F_z = 0 at node.
+%   Free body diagram has positive q <=> cable forces acting in +
+%   direction for each coordinate.
+%   this can be seen by doing an example, with C^\top diag(Cz).
+%   External forces (p) are assumed to act in the + direction for each
+%   coordinate.
+%   so \sum cables_z + \sum F_ext_z = 0
+%   rearranging, F_ext_z = - F_c_z
+%   this is what we get from the configuration matrix, as expected.
+%   Since here, F_ext_z = -mg,
+%   We'd get a positive tension force q. All OK.
+%
+%   However: for reaction balance, same thing, but the configuration matrix
+%   does NOT take care of the signs for us.
+%   Rxn_y + F_ext_z = 0
+%   Rxn_y = -F_ext_z
+%   Rxn_y = mg
+%
+%   CONCLUDE: everywhere the external force vector p is used below, we
+%   change it to -p!!!!
+%   Intuition is that we're balancing out forces, so the reaction force
+%   scalars must be the same magnitude as gravity, since their vector
+%   directions are opposite.
+
 % Steps:
-%   1) problem setup
-%   2) calculate the position of the center of mass of the whole structure
-%   3) calculate the moment contribution of each reaction force
-%   4) solve sum F = 0 and sum M = 0 via linear algebra
-%   5) expand the solution back into the corresponding coordinates of the
-%   nodes.
+%   1) calculate sum of forces: x,y are none, z is total gravity (-mg)
+%   2) calculate total moment contribution due to point masses
+%   3) calculate moment contribution due to (unknown) rxn forces
+%   4) solve, using least squares, for rxn forces and plug in.
 
 % A word of caution as of 2018-07-24:
 disp('get_reaction_forces_3d WARNING: there is a sign error somewhere here, the reaction forces are in the opposite direction of what is expected. You could flip the sign of the result or fix the script. but beware in any case.');
 
-%% 1) 
+%% setup
 
 % number of nodes
 n = size(coordinates, 2);
@@ -53,66 +80,162 @@ if v > n
     error('Error, the vector of pinned nodes is inconsistent with total number of nodes.');
 end
 
+% Take out the coordinates into individual vectors:
+% We want them as COLUMNS
+x = coordinates(1,:)';
+y = coordinates(2,:)';
+z = coordinates(3,:)';
+
 % total mass is 
 m_tot = sum(m);
 
-% need to remove the no-reaction-forces elements from the 'coordinates'
-% matrix to make computations easier down below.
-% the result should now be 3 x v, reduced from 3 x n
-coords_v = zeros(3, v);
-% TO-DO: efficiency improvements. We can't rely on "remove the zeroed-out
-% nodes" because there may be a force applied at a node with coordinates
-% (0, 0, 0). So, keep a counter instead.
-next_node = 1;
-for i=1:n
-    if pinned(i)
-        coords_v(:, next_node) = coordinates(:, i);
-        next_node = next_node + 1;
+% A debugging message if desired, and if the problem is statically
+% indeterminate. (One case when this happens is more columns than rows)
+if debugging >= 1
+    % There are 3*v reaction forces, and 6 balances (Fx,y,z, Mx,y,z)
+    if 3*v > 6
+        disp('Note, your problem may be statically indeterminate, with respect to reaction forces, since the number of reaction forces');
+        disp('is greater than 6, the number of force/moment balances. The solutions for p are then not unique, and it is unknown how this effects the final q.');
+        disp('This situation is common and does not indicate that solutions do not exist; however, consider removing the nodes');
+        disp('with reaction forces (treat them as anchors.)');
     end
 end
 
-if debugging >= 2
-    v
-    coords_v
-end
+% % need to remove the no-reaction-forces elements from the 'coordinates'
+% % matrix to make computations easier down below.
+% % the result should now be 3 x v, reduced from 3 x n
+% coords_v = zeros(3, v);
+% % TO-DO: efficiency improvements. We can't rely on "remove the zeroed-out
+% % nodes" because there may be a force applied at a node with coordinates
+% % (0, 0, 0). So, keep a counter instead.
+% next_node = 1;
+% for i=1:n
+%     if pinned(i)
+%         coords_v(:, next_node) = coordinates(:, i);
+%         next_node = next_node + 1;
+%     end
+% end
+% 
+% if debugging >= 2
+%     v
+%     coords_v
+% end
 
+%% 1)
+
+% Total forces in x, y, z.
+% We're solving Ar R = br.
+% Since this is for the entire structure, there's only one sum in each
+% dimension and one moment in each dimension, so
+br = zeros(6,1);
+
+% The first and second dimensions are zero (sum of forces in x,y is zero.)
+% The third dimension is sum of z forces,
+F_grav = -m_tot * g;
+
+% NOTE: as discussed above, we must switch the signs here, unlike with the
+% force density balance.
+br(3) = -F_grav;
+
+% The third element plugged in in section 2 below.
+
+% The constraint matrix Ar is of size (num balances, num rxn forces)
+Ar = zeros(6, 3*v);
+
+% since there are 6 sums, and three reaction forces per pinned node.
+
+% Now we plug in for the first three rows of Ar.
+% It should look like 
+% [1, 1, ... 1, 0, 0, ... 0, 0, 0, ... 0;
+%  0, 0, ... 0, 1, 1, ... 1, 0, 0, ... 0;
+%  0, 0, ... 0, 0, 0, ... 0, 1, 1, ... 1];
+
+% ...e.g., we're letting the decision variables from 1 to v be the reaction
+% forces in x, from v+1 to 2v being the reaction forces in y,
+% and 2v+1 to 3v being the reaction forces in z.
+
+% So we just want to sum up the three blocks.
+% In other work in this library, we've noted a great way to do this using
+% the kronecker product.
+% The three top rows of Ar:
+Ar(1:3, :) = kron(eye(3), ones(v,1)');
+
+% 
+% % center of mass is at the sum of each coordinate * m_i divided by n.
+% 
+% % specifying the mass positions using linear algebra would need a tensor
+% % and I'm too busy to figure that out right now
+% mass_positions = zeros(size(coordinates));
+% for i=1:n
+%     mass_positions(:,i) = m(i) * coordinates(:,i);
+% end
+% 
+% % center of mass (com) is sum over each row, divide by n.
+% % com is 3 x 1.
+% com = sum(mass_positions, 2) ./ n;
+% 
+% if debugging >= 2
+%     com
+% end
 
 %% 2)
 
-% center of mass is at the sum of each coordinate * m_i divided by n.
-
-% specifying the mass positions using linear algebra would need a tensor
-% and I'm too busy to figure that out right now
-mass_positions = zeros(size(coordinates));
-for i=1:n
-    mass_positions(:,i) = m(i) * coordinates(:,i);
-end
-
-% center of mass (com) is sum over each row, divide by n.
-% com is 3 x 1.
-com = sum(mass_positions, 2) ./ n;
-
-if debugging >= 2
-    com
-end
-
-%% 3)
-
 % We're going to sum moments about the origin.
 
-% As a note on matrix dimensions, we're looking at v reaction forces in 3
-% dimensions each, so when solving A R = b, R is 3v x 1, b is 3 x 1, so A
-% must be 3 x 3v.
+% The RHS of Ar R = br
+% Moments in 3D can be expressed as a skew-symmetric matrix, which has the form
+% below.
 
-% The moment due to the center of mass (having already evaluated the cross
-% product) is nmg * COM in y or x respectively (there are n point masses)
-mom_com = [ - m_tot * g * com(2);
-            - m_tot * g * com(1);
-              0];
-          
-if debugging >= 2
-    mom_com
-end
+% The external forces at each node are
+ext_Fx = zeros(n,1);
+ext_Fy = zeros(n,1); 
+ext_Fz = m*g;
+% ****NOTE**** that we've done the same change as F_grav -> br(3) here,
+% that is, changed the sign already so it's +mg.
+% (recalling that m is already vector'd out)
+ext_F = [ext_Fx; ext_Fy; ext_Fz];
+
+% We'll multiply by a matrix B to get the moment from just this force. 
+% We want to evaluate something that looks
+% like a cross product, in matrix form of
+% [ 0,  -z,   y;
+%   z,   0,  -x;
+%  -y,   x,   0];
+
+% Since we want the sum of moments around the origin, the moment arm is
+% just the coordinate of each node.
+% Summing all moments means we output a 3x1 vector. So, taking in
+% ext_F \in R^{3n}, means that B should be \in R^{3 x 3n}.
+% That makes sense. So, instead of individual moments, we  can use the
+% coordinates as whole vectors.
+
+% a quick notational convenience
+zos = zeros(n,1);
+
+B = [ zos',  -z',     y';
+      z',     zos',  -x';
+     -y',     x',     zos'];
+
+
+% Finally, the (scalar) sum of moments is
+ext_M = B * ext_F;
+
+% plug in. These should be the last 3 entries into br.
+br(4:end) = ext_M;
+
+% % As a note on matrix dimensions, we're looking at v reaction forces in 3
+% % dimensions each, so when solving A R = b, R is 3v x 1, b is 3 x 1, so A
+% % must be 3 x 3v.
+% 
+% % The moment due to the center of mass (having already evaluated the cross
+% % product) is nmg * COM in y or x respectively (there are n point masses)
+% mom_com = [ - m_tot * g * com(2);
+%             - m_tot * g * com(1);
+%               0];
+%           
+% if debugging >= 2
+%     mom_com
+% end
         
 % The left-hand side consists of the vectors from each force to the COM.
 % Evaluating the cross product, we get the moment due to a force
@@ -129,32 +252,77 @@ end
 % insert individual components. coords_v(1, i) is x-coord for node i =
 % 1...v (the ones with reaction forces.)
 
-mom_reactions_coeff = [  zeros(1, v),    -coords_v(3, :),   coords_v(2,:);
-                         coords_v(3,:),   zeros(1, v),     -coords_v(1,:);
-                        -coords_v(2,:),   coords_v(1,:),    zeros(1,v)];
+% mom_reactions_coeff = [  zeros(1, v),    -coords_v(3, :),   coords_v(2,:);
+%                          coords_v(3,:),   zeros(1, v),     -coords_v(1,:);
+%                         -coords_v(2,:),   coords_v(1,:),    zeros(1,v)];
+% 
+% if debugging >= 2
+%     mom_reactions_coeff
+% end
+                    
+%% 3)
+
+% For the actual reaction forces (moment arms),
+% first isolate the nodes at which rxn forces exist.
+
+% The construction
+% ~any(pinned,2)
+% returns a vector of zeros and ones, where the ones are the coordiantes to
+% remove.
+% So, remove nodes from the x and y vectors.
+x_pinned = x;
+y_pinned = y;
+z_pinned = z;
+x_pinned(~any(pinned,2)) = [];
+y_pinned(~any(pinned,2)) = [];
+z_pinned(~any(pinned,2)) = [];
+
+% The construction is the same as the point masses,
+% where here the Fx and Ry are part of the vector R, rxn forces,
+% so the row in the constraint matrix is just B but for only the pinned
+% nodes.
+% This part of Ar is 3 rows x 3v columns, which matches the above for the
+% point masses but with v instead of n.
+
+% another quick notational convenience for a vector of zeros for the
+% 'pinned' formulation
+zosp = zeros(v,1);
+
+B_p = [ zosp',     -z_pinned',   y_pinned';
+        z_pinned',  zosp',      -x_pinned';
+       -y_pinned',  x_pinned',   zosp'];
+
+% and plug in:
+Ar(4:end, :) = B_p;
+
+% % Set up the total problem. we need to do the force balance (pretty
+% % trivial) to stack with the moment balance
+% 
+% force_com = [ 0; 0; -m_tot * g]; % 3 x 1
+% % sum the forces along each dimension. Similar to the moments except no
+% % coordinates.
+% % also is size 3 x 3v
+% force_reactions_coeff = [ ones(1, v),   zeros(1, v),    zeros(1, v);
+%                           zeros(1, v),  ones(1, v),     zeros(1, v);
+%                           zeros(1, v),  zeros(1, v),    ones(1, v)];
+% 
+% % Then, the left-hand-side and right-hand-side matrices are
+% A = [force_reactions_coeff; mom_reactions_coeff];
+% b = [force_com; mom_com];
+% 
+
+%% 4) 
 
 if debugging >= 2
-    mom_reactions_coeff
+    Ar
+    br
+    rank(Ar)
 end
-                    
-%% 4)
-
-% Set up the total problem. we need to do the force balance (pretty
-% trivial) to stack with the moment balance
-
-force_com = [ 0; 0; -m_tot * g]; % 3 x 1
-% sum the forces along each dimension. Similar to the moments except no
-% coordinates.
-% also is size 3 x 3v
-force_reactions_coeff = [ ones(1, v),   zeros(1, v),    zeros(1, v);
-                          zeros(1, v),  ones(1, v),     zeros(1, v);
-                          zeros(1, v),  zeros(1, v),    ones(1, v)];
-
-% Then, the left-hand-side and right-hand-side matrices are
-A = [force_reactions_coeff; mom_reactions_coeff];
-b = [force_com; mom_com];
 
 % FINALLY, solve:
+R = Ar \ br;
+
+% note, R is \in 3v x 1.
 
 % TO-DO: could actually formulate this as a minimization problem since it's
 % statically indeterminate (e.g. nonzero null space, there are *many* more
@@ -163,7 +331,6 @@ b = [force_com; mom_com];
 % Currently unknown if this has any effect on the inverse kinematics
 % solution.
 
-R = A \ b;
 
 %% 5) 
 
@@ -192,17 +359,16 @@ for i=1:n
     end
 end
 
+% a quick check: next_node should now be larger than v.
+if next_node <= v
+    error('Error in placing node reaction forces into vectors, bug.');
+end
+
 % some checking
 if debugging >= 2
-    A
-    b
     R
-    rank(A)
-    rank(b)
-    rank(R)
     px
     py
-    pz
 end
     
 end

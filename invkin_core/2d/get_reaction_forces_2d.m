@@ -25,6 +25,34 @@ function [px, py] = get_reaction_forces_2d(x, y, pinned, m, g, debugging)
 %   py = same, for y
 %
 
+% NOTE: this force balance is NOT the same directionality as the cable net
+% itself. Gravity is in a different direction.
+% For example:
+%
+%   Cable net solves \sum F_y = 0 at node.
+%   Free body diagram has positive q <=> cable forces acting in +
+%   direction for each coordinate.
+%   this can be seen by doing an example, with C^\top diag(Cy).
+%   External forces (p) are assumed to act in the + direction for each
+%   coordinate.
+%   so \sum cables_y + \sum F_ext_y = 0
+%   rearranging, F_ext_y = - F_c_y
+%   this is what we get from the configuration matrix, as expected.
+%   Since here, F_ext_y = -mg,
+%   We'd get a positive tension force q. All OK.
+%
+%   However: for reaction balance, same thing, but the configuration matrix
+%   does NOT take care of the signs for us.
+%   Rxn_y + F_ext_y = 0
+%   Rxn_y = -F_ext_y
+%   Rxn_y = mg
+%
+%   CONCLUDE: everywhere the external force vector p is used below, we
+%   change it to -p!!!!
+%   Intuition is that we're balancing out forces, so the reaction force
+%   scalars must be the same magnitude as gravity, since their vector
+%   directions are opposite.
+
 % Steps:
 %   1) calculate sum of forces: x is none, y is total gravity (-mg)
 %   2) calculate total moment contribution due to point masses
@@ -53,12 +81,14 @@ if debugging >= 2
 end
 
 % A debugging message if desired, and if the problem is statically
-% indeterminate (more columns than rows)
+% indeterminate. (One case when this happens is more columns than rows)
 if debugging >= 1
     % There are 2*v reaction forces, and 3 balances (Fx, Fy, M)
     if 2*v > 3
-        disp('Note, your problem is statically indeterminate, with respect to reaction forces. The solutions for p are not unique, and it is unknown how this effects the final q.');
-        disp('This situation is common and does not indicate that solutions do not exist; however, consider removing anchoring nodes.');
+        disp('Note, your problem may be statically indeterminate, with respect to reaction forces, since the number of reaction forces');
+        disp('is greater than 3, the number of force/moment balances. The solutions for p are then not unique, and it is unknown how this effects the final q.');
+        disp('This situation is common and does not indicate that solutions do not exist; however, consider removing the nodes');
+        disp('with reaction forces (treat them as anchors.)');
     end
 end
 
@@ -72,7 +102,11 @@ br = zeros(3,1);
 
 % The first dimension is zero (sum of forces in x is zero.)
 % The second dimension is sum of y forces,
-br(2) = -m_tot * g;
+F_grav = -m_tot * g;
+
+% NOTE: as discussed above, we must switch the signs here, unlike with the
+% force density balance.
+br(2) = -F_grav;
 
 % The third element plugged in in section 2 below.
 
@@ -106,7 +140,9 @@ Ar(1:2, :) = kron(eye(2), ones(v,1)');
 
 % The external forces at each node are
 ext_Fx = zeros(n,1);
-ext_Fy = -m*g;
+ext_Fy = m*g;
+% ****NOTE**** that we've done the same change as F_grav -> br(2) here,
+% that is, changed the sign already so it's +mg.
 % (recalling that m is already vector'd out)
 ext_F = [ext_Fx; ext_Fy];
 % We'll multiply by a matrix
@@ -134,7 +170,7 @@ x_pinned(~any(pinned,2)) = [];
 y_pinned(~any(pinned,2)) = [];
 
 % The construction is the same as the point masses, -yFx + xFy,
-% where here the Fx and Ry are part of the vector R, rxn forces,
+% where here the Fx and Fy are part of the vector R, rxn forces,
 % so the row in the constraint matrix is just B but for only the pinned
 % nodes.
 B_p = [-y_pinned', x_pinned'];
