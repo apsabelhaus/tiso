@@ -243,6 +243,11 @@ pb = {};
 
 % finally, the big function call:
 for i=1:num_points
+    if debugging >= 1
+        disp('Iteration:');
+        disp(num2str(i));
+    end
+    % quadprog is inside this function.
     [f_opt(:,i), q_opt(:,i), Ab_i, pb_i] = invkin_core_2d_rb(x(:,i), ...
         y(:,i), px(:,i), py(:,i), w, C, s, b, q_min, debugging);
     % and insert this Ab and pb.
@@ -271,6 +276,9 @@ end
 % tension forces? See if/what solution pops out with the constraint in the
 % opposite direction (< c, not > c.)
 
+%% Convert the optimal forces into optimal rest lengths.
+% TO-DO: DO THIS LATER...
+
 
 %% Plot the structure, for reference.
 
@@ -278,15 +286,21 @@ end
 % Need to specify "how big" we want the bars to be. A good number is
 radius = 0.02; % meters.
 
-% Plot.
-%plot_2d_tensegrity_invkin(C, x, y, s, radius);
-% over each step
-% for i=1:num_points
-%     clf;
-%     plot_2d_tensegrity_invkin(C, x(:,i), y(:,i), s, radius);
-% end
+% No plotting right now - 
+% the plotter currently creates a new figure each time, which is not OK for
+% plotting many points. We don't want num_points windows, but instead one
+% window into which num_points figures are plotted sequentially.
 
+%% Save the data.
 
+% path to store: ***CHANGE THIS PER-PERSON***
+% for now, use the user's home directory.
+%savefile_path = '~/';
+
+% write the actual data
+% we used the rigid body reformulation method here, 
+%n_or_b = 1;
+%save_invkin_results_2d(f_opt, n, r, n_or_b, savefile_path);
 
 
 

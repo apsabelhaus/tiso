@@ -378,7 +378,8 @@ end
 % e.g. they are outside some tolerance level epsilon,
 eps = 1e-10;
 if any( (Ab * q_opt - pb) > eps )
-    warning('invkin_core_2d_rb returned a result but the constraints were NOT satisfied, solution is likely invalid.');
+    warning(strcat('invkin_core_2d_rb returned a result but the constraints were NOT satisfied to a tolerance of ', ...
+        num2str(eps), ', solution may be invalid.'));
 end
 
 
