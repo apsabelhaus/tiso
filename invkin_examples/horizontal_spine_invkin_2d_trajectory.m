@@ -109,6 +109,13 @@ m_node = m_i/4;
 % and in vector form,
 m = ones(n, 1) * m_node;
 
+% Spring constant for the cables. This isn't used in the optimization for
+% force (densities) itself, but for conversion into inputs when saving the
+% data.
+% Here's how to specify 'the same spring constant for all cables'. In N/m.
+kappa_i = 300;
+kappa = ones(s,1) * kappa_i;
+
 % Example of how to do the 'anchored' analysis.
 % Declare a vector w \in R^n, 
 % where w(i) == 1 if the node should be 'kept'.
@@ -238,6 +245,8 @@ py = py + -m*g;
 % over their sizes right now.
 f_opt = zeros(s, num_points);
 q_opt = zeros(s, num_points);
+% we also need the lengths for calculating u from q*.
+lengths = zeros(s, num_points);
 Ab = {};
 pb = {};
 
@@ -248,7 +257,7 @@ for i=1:num_points
         disp(num2str(i));
     end
     % quadprog is inside this function.
-    [f_opt(:,i), q_opt(:,i), Ab_i, pb_i] = invkin_core_2d_rb(x(:,i), ...
+    [f_opt(:,i), q_opt(:,i), lengths(:,i), Ab_i, pb_i] = invkin_core_2d_rb(x(:,i), ...
         y(:,i), px(:,i), py(:,i), w, C, s, b, q_min, debugging);
     % and insert this Ab and pb.
     Ab{end+1} = Ab_i;
@@ -277,7 +286,16 @@ end
 % opposite direction (< c, not > c.)
 
 %% Convert the optimal forces into optimal rest lengths.
-% TO-DO: DO THIS LATER...
+% u_i = l_i - (F_i/kappa_i)
+
+% save in a vector
+u_opt = zeros(s, num_points);
+% it's more intuitive to iterate for now. At least, we can iterate over
+% cables and not over timesteps.
+for k=1:s
+    % For cable k, divide the row in f_opt by kappa(k)
+    u_opt(k, :) = lengths(k,:) - (f_opt(k,:) ./ kappa(k));
+end
 
 
 %% Plot the structure, for reference.
@@ -293,14 +311,14 @@ radius = 0.02; % meters.
 
 %% Save the data.
 
-% path to store: ***CHANGE THIS PER-PERSON***
+% path to store: ***CHANGE THIS PER-USER***
 % for now, use the user's home directory.
-%savefile_path = '~/';
+savefile_path = '~/';
 
 % write the actual data
 % we used the rigid body reformulation method here, 
-%n_or_b = 1;
-%save_invkin_results_2d(f_opt, n, r, n_or_b, savefile_path);
+n_or_b = 1;
+%save_invkin_results_2d(u_opt, n, r, n_or_b, savefile_path);
 
 
 

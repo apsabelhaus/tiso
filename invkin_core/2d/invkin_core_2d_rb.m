@@ -1,7 +1,7 @@
 %% invkin_core_2d_rb.m
 % Copyright Andrew P. Sabelhaus 2018
 
-function [f_opt, q_opt, Ab, pb] = invkin_core_2d_rb(x, y, px, py, w, C, s, b, q_min, debugging)
+function [f_opt, q_opt, lengths, Ab, pb] = invkin_core_2d_rb(x, y, px, py, w, C, s, b, q_min, debugging)
 % invkin_core_2d_rb performs a single inverse kinematics computation for a
 % 2-dimensional tensegrity structure (robot), using the reformulated
 % problem treating the rigid bodies with a force/moment balance and not as
@@ -64,6 +64,11 @@ function [f_opt, q_opt, Ab, pb] = invkin_core_2d_rb(x, y, px, py, w, C, s, b, q_
 %   cables.
 %
 %   q_opt = optimal force densities, corresponding to f_opt
+%
+%   lengths = lengths of each cable, as specified via C and {x,y}. This
+%       could be calc'd elsewhere since it doesn't actually depend on the
+%       output of quadprog, but it's useful to return for calculating u
+%       from q* in the caller.
 %
 %   Ab, pb = calculated static equilibrium constraint, 
 %           provided for debugging if desired.
@@ -396,15 +401,15 @@ dz = H_hat * C * y;
 
 % so the lengths of each cable are the euclidean norm of each 2-vector.
 % re-organize:
-length_vecs = [dx'; dz'];
+D = [dx, dz];
 if debugging >= 2
     disp('Member length vectors are:');
-    length_vecs
+    D
 end
 
 % the scalar lengths are then the 2-norm (euclidean) for each column, which
 % is
-lengths = vecnorm(length_vecs);
+lengths = vecnorm(D, 2, 2);
 if debugging >= 2
     disp('Member lengths (scalar) are:');
     lengths

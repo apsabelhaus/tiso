@@ -28,7 +28,9 @@ function save_invkin_results_2d(u_opt, n, r, n_or_b, path)
 s = size(u_opt,1);
 
 %% Make the string header for debugging.
-s1 = 'Tensegrity Inverse Kinematics Results - 2D';
+s1 = 'Tensegrity Inverse Kinematics Results';
+s2 = 'Parameters:';
+s3 = 'Dimensionality, Timestamp, Nodes, Cables, Bars, Computation Method';
 
 % Record the current time in a string
 start_time_string = datestr(datetime('now'));
@@ -37,10 +39,7 @@ start_time_string = datestr(datetime('now'));
 start_time_string = regexprep(start_time_string, ':', '-');
 start_time_string = regexprep(start_time_string, ' ', '_');
 
-% second line will be a timestamp
-s2 = start_time_string;
-
-% Third line is debugging info.
+% Need to output rigid body OR nodal method
 method = '';
 if n_or_b == 0
     method = 'nodal';
@@ -48,11 +47,15 @@ elseif n_or_b == 1
     method = 'rigid body';
 end
 
-% plug all into a debugging string
-s3 = sprintf('Tensegrity robot had, %i nodes, %i cables, %i bars, and used the %s method.', n, s, r, method);
+% this is a two-dimensional problem
+d = 2;
+
+% second line will be a big list of all the parameters.
+s4 = sprintf('%i, %s, %i, %i, %i, %s', d, start_time_string, n, s, r, method);
 
 % describe what the outputs are.
-s4 = 'Optimal rest lengths for each cable starting from cable 1 up to cable s (rows are timestep and columns are cable):';
+%s5 = 'Optimal rest lengths for each cable starting from cable 1 up to cable s (rows are timestep and columns are cable):';
+s5 = 'Rest Lengths: row = timestep and col = cable no.';
 
 %% Write the header
 
@@ -71,6 +74,7 @@ fprintf(fid, '%s\n', s1);
 fprintf(fid, '%s\n', s2);
 fprintf(fid, '%s\n', s3);
 fprintf(fid, '%s\n', s4);
+fprintf(fid, '%s\n', s5);
 % close so we can use csvwrite
 fclose(fid);
 
