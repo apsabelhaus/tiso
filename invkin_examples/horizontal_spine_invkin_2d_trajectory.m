@@ -45,7 +45,13 @@ q_min = 0.5;
 % spine. Nodes are column vectors [x; z], but for ease, written as transposed
 % here.
 
-bar_endpoint = 0.5; % meters. 50 cm.
+%bar_endpoint = 0.5; % meters. 50 cm.
+
+% For the 2D spine control test, fall 2018, the dimensions of the vertebra
+% are as follows:
+% bar_endpoint = 4 inches
+% that's 4 * 2.54 * 0.01 = 0.1016 meters
+bar_endpoint = 0.1016;
 
 a = [   0,              0;
         bar_endpoint,   -bar_endpoint;
@@ -55,6 +61,11 @@ a = [   0,              0;
 if debugging >= 2
     a
 end
+
+% (e.g., vertebra is in an 8x8 inch box.)
+
+% Mass as measured with a scale on 2018-11-18 is about 500g
+m_i = 0.495;
 
 % number of rigid bodies
 b = 2;
@@ -99,7 +110,9 @@ g = 9.81;
 % mass per vertebra
 % let's say each vertebra weighs 0.8 kg. Thta's about 1.7 lbs, which seems
 % right to Drew if motors are included.
-m_i = 0.8;
+%m_i = 0.8;
+% 2018-11-28: updated above alongside the dimensions for the hardware test
+% of fall 2018.
 
 % Note here that I've used m_i as per-body not per-node.
 % Probably accidentally changed notation w.r.t. T-CST 2018 paper.
