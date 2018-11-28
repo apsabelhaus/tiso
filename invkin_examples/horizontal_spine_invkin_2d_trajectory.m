@@ -126,7 +126,7 @@ m = ones(n, 1) * m_node;
 % force (densities) itself, but for conversion into inputs when saving the
 % data.
 % Here's how to specify 'the same spring constant for all cables'. In N/m.
-kappa_i = 300;
+kappa_i = 500;
 kappa = ones(s,1) * kappa_i;
 
 % Example of how to do the 'anchored' analysis.
