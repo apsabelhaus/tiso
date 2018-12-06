@@ -166,13 +166,28 @@ g = 9.81;
 m_node = m_i/4;
 
 % and in vector form,
-m = ones(n, 1) * m_node;
+%m = ones(n, 1) * m_node;
+
+% 2018-12-6: let's see if we just assign all the mass to the center of mass
+% node. For the moving vertebra, that's node 1, e.g. 5 overall.
+m = zeros(n,1);
+m(5) = m_i;
+% and we can distribute the masses over the first vertebra - not that it
+% matters, since we're throwing out those nodes.
+m(1:4) = ones(4,1) * m_node;
 
 % Spring constant for the cables. This isn't used in the optimization for
 % force (densities) itself, but for conversion into inputs when saving the
 % data.
 % Here's how to specify 'the same spring constant for all cables'. In N/m.
-kappa_i = 500;
+% For the hardware test, the Jones Spring Co. #241 has a constant of 1.54
+% lb/in, which is 270 N/m.
+% One set of new McMaster springs is 4.79 lb/in,
+% conversion is 
+lbin_in_nm = 175.126835;
+kappa_i = 4.79 * lbin_in_nm;
+% ...which happens to be
+%kappa_i = 270;
 kappa = ones(s,1) * kappa_i;
 
 % Example of how to do the 'anchored' analysis.
@@ -400,6 +415,18 @@ for k=1:s
     u_opt(k, :) = lengths(k,:) - (f_opt(k,:) ./ kappa(k));
 end
 
+% For use with the hardware example, it's easier to instead define a
+% control input that's the amount of "stretch" a cable experiences.
+% Since this is the definition of F = \kappa * stretch, just obviously the
+% amount of spring extension, we can calculate this quantity without even
+% using length.
+stretch_opt = zeros(s, num_points);
+for k=1:s
+    % For cable k, divide the row in f_opt by kappa(k)
+    % Also, for the hardware test, convert to cm because we're using
+    % single-precision floating point numbers.
+    stretch_opt(k, :) = (f_opt(k,:) ./ kappa(k)) * 100;
+end
 
 %% Plot the structure, for reference.
 
@@ -426,6 +453,8 @@ savefile_path = '~/';
 % we used the rigid body reformulation method here, 
 n_or_b = 1;
 %save_invkin_results_2d(u_opt, n, r, n_or_b, savefile_path);
+% For the hardware test, we want to use "stretch" not rest length.
+%save_invkin_results_2d(stretch_opt, n, r, n_or_b, savefile_path);
 
 
 
