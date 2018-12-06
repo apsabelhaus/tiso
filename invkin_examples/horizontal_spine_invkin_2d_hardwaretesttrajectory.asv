@@ -41,6 +41,7 @@ end
 % minimum cable force density
 %q_min = 0; % units of N/m, depending on m and g
 q_min = 0.5;
+%q_min = 0.1;
 
 % Local frames. We're going to use the get_node_coordinates script for both
 % "vertebrae", but with the "fixed" one having a different frame to account
@@ -51,14 +52,55 @@ q_min = 0.5;
 % bar_endpoint = 4 inches
 % that's 4 * 2.54 * 0.01 = 0.1016 meters
 bar_endpoint = 0.1016;
+% BUT, the center of mass is actually offset, due to some construction
+% differences with the nonzero-thickness of the bars.
+% The center is at -0.81 inches from the geometric center.
+% We'll do the origin of this frame as the geometric center,
+% so that puts the center at 
+center_offset = 0.81 * 2.54 * 0.01;
+center_x = -center_offset;
 
-a = [   0,              0;
-        bar_endpoint,   -bar_endpoint;
-        -bar_endpoint,  -bar_endpoint;
-        0,              bar_endpoint]';
+% The endpoints are still at the bounds of an 8x8 box, which puts the frame
+% at the following.
+% We're also reorienting the Y-shape so it's in the proper rotation in its
+% default configuration.
+% 2 = bottom left, 3 = top left, 4 = right.
+a_free = [   center_x,              0;
+        -bar_endpoint,   -bar_endpoint;
+        -bar_endpoint,  bar_endpoint;
+        bar_endpoint,              0]';
     
+% Now, for the fixed vertebra, we're going to also have four nodes,
+% but each of them will only be used as anchor points (and will be thrown
+% out of the force balance.)
+% It's more difficult to specify the center of that frame based on the
+% mechanical designs... let's choose the centerline between the two "tip"
+% eyebolts at the origin of that frame. It'll be easier to do the
+% translation that way. (there is no rotation for this one.)
+% the eyebolts are at 0.75 in from their centerpoint
+tip_y = 0.75* 2.54 * 0.01;
+% The back parts of the "Y" are at two translations: first, to a reference
+% point on the motor plate. Choose this to be the top bolt (it's mated
+% aligned in Solidworks.)
+back_plate_x = -8.5 * 2.54 * 0.01;
+back_plate_y = 3.25 * 2.54 * 0.01;
+% Then, on the motor plate, the eye bolt location is translated in X from
+% this particular location in the bolt pattern by 1.5in. (No y.)
+motor_plate_x = 1.5 * 2.54 * 0.01;
+% Therefore, the locations are
+back_x = back_plate_x + motor_plate_x;
+back_y = back_plate_y;
+
+% Insert these into a full frame.
+% Nodes will be numbered from bottom to top.
+a_fixed = [     back_x,             -back_y;
+                0,                  -tip_y;
+                0,                  tip_y;
+                back_x,             back_y]';
+
 if debugging >= 2
-    a
+    a_free
+    a_fixed
 end
 
 % (e.g., vertebra is in an 8x8 inch box.)
@@ -67,9 +109,9 @@ end
 m_i = 0.495;
 
 % number of rigid bodies
-b = 2;
+%b = 2;
 % When removing the anchor nodes, it's like removing one of the bodies:
-% b = 1;
+b = 1;
 
 % Configuration matrix for WHOLE STRUCTURE. (in future, pattern out.)
 
@@ -78,15 +120,17 @@ b = 2;
 % Rows 5-10 are bars
 % Columns 1-4 are bottom tetra nodes
 % Columns 5-8 are top tetra nodes
+% This is different than the original example, since our nodes for the
+% fixed vertebra are different. Same ordering of cables though.
 %    1  2  3  4  5  6  7  8  
-C = [0  1  0  0  0 -1  0  0;  %  1, cable 1
-     0  0  1  0  0  0 -1  0;  %  2, ...
-     0  0  0  1  0 -1  0  0;  %  3, ...
-     0  0  0  1  0  0 -1  0;  %  4, cable 4
-     1 -1  0  0  0  0  0  0;  %  5, bar 1
-     1  0 -1  0  0  0  0  0;  %  6, ...
-     1  0  0 -1  0  0  0  0;  %  7, ...
-     0  0  0  0  1 -1  0  0;  %  8, ...
+C = [1  0  0  0  0 -1  0  0;  %  1, cable 1, horizontal bottom
+     0  0  0  1  0  0 -1  0;  %  2, cable 2, horizontal top
+     0  1  0  0  0 -1  0  0;  %  3, cable 3, saddle bottom
+     0  0  1  0  0  0 -1  0;  %  4, cable 4, saddle top
+     1 -1  0  0  0  0  0  0;  %  5, bar 1, bottom mounting point connection
+     0  1 -1  0  0  0  0  0;  %  6, ...
+     0  0  1 -1  0  0  0  0;  %  7, ...
+     0  0  0  0  1 -1  0  0;  %  8, ..., free vertebra bar 1
      0  0  0  0  1  0 -1  0;  %  9, ...
      0  0  0  0  1  0  0 -1]; % 10, bar 6
 
@@ -104,7 +148,10 @@ if debugging >= 2
 end
 
 % gravitational constant
+% ON 2018-12-6: THIS MAY BE OPPOSITE? WHY?? OR NOT??
+% TO-DO: FIX THIS SIGN ERROR. Gravity went "up" for earlier results??
 g = 9.81;
+%g = -9.81;
 
 % mass per vertebra
 % let's say each vertebra weighs 0.8 kg. Thta's about 1.7 lbs, which seems
@@ -134,9 +181,9 @@ kappa = ones(s,1) * kappa_i;
 % For this example, want to treat body 1 as the anchored nodes.
 % So, we zero-out anchored nodes 1 through 4, and keep nodes 5-8
 % (which is vertebra two.)
-% w = [0; 0; 0; 0; 1; 1; 1; 1];
+w = [0; 0; 0; 0; 1; 1; 1; 1];
 % Including all nodes:
-w = ones(n,1);
+%w = ones(n,1);
 
 % IMPORTANT! If chosing to remove nodes, must change 'b' also, or else inv
 % kin will FAIL.
@@ -148,10 +195,10 @@ w = ones(n,1);
 % for "pinned". Example, nodes inside the leftmost vertebra, where we're
 % deciding to assume that only the tips of its "Y" are supported.
 
-% So, only nodes 2 and 3 are pinned.
+% So, only nodes 1 and 4 are pinned.
 pinned = zeros(n,1);
-pinned(2) = 1;
-pinned(3) = 1;
+pinned(1) = 1;
+pinned(4) = 1;
 
 %% Trajectory of positions
 
@@ -165,11 +212,20 @@ pinned(3) = 1;
 max_sweep = pi/8;
 % with the the vertebra horizontal-sideways,
 % The local frame needs to be rotated by
-rotation_0 = -pi/2;
-% and translated outward by some amount
-translation_0 = [bar_endpoint * (3/2); 0];
+%rotation_0 = -pi/2;
+% The frames are at an initial configuration of zero rotation.
+rotation_0 = 0;
+% and translated outward. The test setup's default position has the free
+% vertebra directly aligned with the saddle cables' eyebolt exit points,
+% which, since the moving vertebra has its frame origin at the geometric
+% center,
+% translation_0 = [bar_endpoint; 0];
+% For testing, here's a smaller fraction.
+translation_0 = [bar_endpoint * (3/4); 0];
 % with a large number of points.
 num_points = 400;
+
+% For this vertebr
 
 % get the trajectory:
 [xi_all] = trajectory_XZT_bend_2d(translation_0, rotation_0, max_sweep, num_points);
@@ -209,11 +265,22 @@ x = zeros(n, num_points);
 y = zeros(n, num_points);
 
 for i=1:num_points
+    % We split up according to rigid body. The fixed body is xi_all(1:3,i)
+    coordinates_i_fixed = get_node_coordinates_2d(a_fixed, ...
+        xi_all(1:3, i), debugging);
+    % and for the free vertebra
+    coordinates_i_free = get_node_coordinates_2d(a_free, ...
+        xi_all(4:6, i), debugging);
     % At this point along the trajectory, get the coordinates
-    coordinates_i = get_node_coordinates_2d(a, xi_all(:,i), debugging);
-    % ...and split them into coordinate-wise vectors per node.
-    x(:,i) = coordinates_i(1,:)';
-    y(:,i) = coordinates_i(2,:)';
+    %coordinates_i = get_node_coordinates_2d(a_free, xi_all(:,i), debugging);
+    % ...and split them into coordinate-wise vectors per node, per
+    % vertebra.
+    x(1:4, i) = coordinates_i_fixed(1,:)';
+    x(5:8, i) = coordinates_i_free(1,:)';
+    y(1:4, i) = coordinates_i_fixed(2,:)';
+    y(5:8, i) = coordinates_i_free(2,:)';
+%     x(:,i) = coordinates_i(1,:)';
+%     y(:,i) = coordinates_i(2,:)';
 end
     
 % coordinates = get_node_coordinates_2d(a, xi, debugging);
@@ -297,6 +364,24 @@ end
 % tension forces? See if/what solution pops out with the constraint in the
 % opposite direction (< c, not > c.)
 
+% A quick plot of the cable tensions.
+figure; 
+hold on;
+subplot(4,1,1)
+hold on;
+title('Cable tensions');
+plot(f_opt(1,:))
+ylabel('1 (N)');
+subplot(4,1,2)
+plot(f_opt(2,:))
+ylabel('2 (N)');
+subplot(4,1,3)
+plot(f_opt(3,:))
+ylabel('3 (N)');
+subplot(4,1,4);
+plot(f_opt(4,:));
+ylabel('4 (N)');
+
 %% Convert the optimal forces into optimal rest lengths.
 % u_i = l_i - (F_i/kappa_i)
 
@@ -314,12 +399,16 @@ end
 
 % This should make it easier to visualize the results.
 % Need to specify "how big" we want the bars to be. A good number is
-radius = 0.02; % meters.
+radius = 0.005; % meters.
 
 % Plotting: do the first position and the last position.
 % Basic command:
 % plot_2d_tensegrity_invkin(C, x, y, s, radius);
-%
+% We want to get the first and last coordinates.
+% Initial position:
+plot_2d_tensegrity_invkin(C, x(:,1), y(:,1), s, radius);
+% Final position:
+plot_2d_tensegrity_invkin(C, x(:,end), y(:,end), s, radius);
 
 %% Save the data.
 
