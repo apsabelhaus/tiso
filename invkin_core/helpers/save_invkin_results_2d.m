@@ -55,7 +55,7 @@ s4 = sprintf('%i, %s, %i, %i, %i, %s', d, start_time_string, n, s, r, method);
 
 % describe what the outputs are.
 %s5 = 'Optimal rest lengths for each cable starting from cable 1 up to cable s (rows are timestep and columns are cable):';
-s5 = 'Rest Lengths: row = timestep and col = cable no.';
+s5 = 'Inputs: row = timestep and col = cable no.';
 
 %% Write the header
 
