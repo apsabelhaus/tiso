@@ -252,6 +252,12 @@ translation_0 = [bar_endpoint * (3/4); 0];
 num_points = 5;
 %num_points = 2;
 
+% For calculations with the hardware test setup, we need to know
+% where the vertebra is calibrated from. We'll then take a difference in
+% lengths between these two positions.
+calibrated_position = [bar_endpoint; 0];
+% ...because the center of that frame is at bar_endpoint, not the CoM.
+
 % For the frames we've chosen, it doesn't make sense to rotate the vertebra
 % around the origin: we don't want it to sweep out from the tip of the
 % eyebolts, but instead from whatever the "center" of the fixed vertebra
@@ -438,6 +444,40 @@ for k=1:s
     % single-precision floating point numbers.
     stretch_opt(k, :) = (f_opt(k,:) ./ kappa(k)) * 100;
 end
+
+% Now, we have to adjust by the offsets in position, since the total length
+% changes. First, the difference between the calibrated position and the
+% initial equilibrium state will be needed to be subtracted away.
+% The length calculation for the calibrated position can be done as
+
+% The locations of each of the nodes for the moving vertebra:
+calibrated_nodes_free = a_free + calibrated_position;
+calibrated_nodes_fixed = a_fixed;
+calibrated_nodes_x(1:4, i) = calibrated_nodes_fixed(1,:)';
+calibrated_nodes_x(5:8, i) = calibrated_nodes_free(1,:)';
+calibrated_nodes_y(1:4, i) = calibrated_nodes_fixed(2,:)';
+calibrated_nodes_y(5:8, i) = calibrated_nodes_free(2,:)';
+%H_hat = [eye(s), zeros(s, r)];
+% all the lengths of each cable are:
+dx0 = C(1:4,:) * calibrated_nodes_x;
+dz0 = C(1:4,:) * calibrated_nodes_y;
+
+% so the lengths of each cable are the euclidean norm of each 2-vector.
+% re-organize:
+D0 = [dx0, dz0];
+
+% the scalar lengths are then the 2-norm (euclidean) for each column, which
+% is
+lengths0 = vecnorm(D0, 2, 2);
+% the difference that needs to be added is this amount minus current
+% length.
+% in cm:
+lengths_adj = (lengths0 - lengths)*100;
+
+% the stretches then will be adjusted by this amount. Needs to be additive.
+stretch_opt = stretch_opt + lengths_adj;
+
+% Then, fo
 
 %% Plot the structure, for reference.
 
