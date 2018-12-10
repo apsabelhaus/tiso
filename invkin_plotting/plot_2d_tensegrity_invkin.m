@@ -176,6 +176,8 @@ end
 title('Tensegrity Structure used w/InvKin');
 xlabel('x position (m)');
 ylabel('z position (m)');
+% Do a font size change.
+set(gca, 'FontSize', 14);
 
 %% Cleanup
 

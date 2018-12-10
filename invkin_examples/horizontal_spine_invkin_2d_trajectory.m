@@ -348,7 +348,7 @@ savefile_path = '~/';
 n_or_b = 1;
 %save_invkin_results_2d(u_opt, n, r, n_or_b, savefile_path);
 % For the hardware test, we want to use "stretch" not rest length.
-save_invkin_results_2d(stretch_opt, n, r, n_or_b, savefile_path);
+%save_invkin_results_2d(stretch_opt, n, r, n_or_b, savefile_path);
 
 
 

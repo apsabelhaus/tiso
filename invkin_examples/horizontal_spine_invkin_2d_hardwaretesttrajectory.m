@@ -106,7 +106,10 @@ end
 % (e.g., vertebra is in an 8x8 inch box.)
 
 % Mass as measured with a scale on 2018-11-18 is about 500g
-m_i = 0.495;
+%m_i = 0.495;
+% For the demo on 2018-12-6, up the mass a bit so that we get more visible
+% results.
+m_i = 0.75;
 
 % number of rigid bodies
 %b = 2;
@@ -189,6 +192,10 @@ kappa_i = 4.79 * lbin_in_nm;
 % ...which happens to be
 %kappa_i = 270;
 kappa = ones(s,1) * kappa_i;
+% On 2018-12-6, we changed cable 3 to have a higher spring constant, so it
+% has less extension, since we were running into hardware limitations.
+kappa_3 = 8.61 * lbin_in_nm;
+kappa(3) = kappa_3;
 
 % Example of how to do the 'anchored' analysis.
 % Declare a vector w \in R^n, 
@@ -239,7 +246,11 @@ rotation_0 = 0;
 % For testing, here's a smaller fraction.
 translation_0 = [bar_endpoint * (3/4); 0];
 % with a large number of points.
-num_points = 400;
+%num_points = 400;
+% For doing the hardware test: the motor controller doesn't have great
+% resolution. So, do a smaller number of poins.
+num_points = 5;
+%num_points = 2;
 
 % For the frames we've chosen, it doesn't make sense to rotate the vertebra
 % around the origin: we don't want it to sweep out from the tip of the
@@ -454,7 +465,7 @@ savefile_path = '~/';
 n_or_b = 1;
 %save_invkin_results_2d(u_opt, n, r, n_or_b, savefile_path);
 % For the hardware test, we want to use "stretch" not rest length.
-%save_invkin_results_2d(stretch_opt, n, r, n_or_b, savefile_path);
+save_invkin_results_2d(stretch_opt, n, r, n_or_b, savefile_path);
 
 
 
