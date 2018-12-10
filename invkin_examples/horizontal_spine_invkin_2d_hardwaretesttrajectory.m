@@ -106,10 +106,12 @@ end
 % (e.g., vertebra is in an 8x8 inch box.)
 
 % Mass as measured with a scale on 2018-11-18 is about 500g
-%m_i = 0.495;
+m_i = 0.495;
 % For the demo on 2018-12-6, up the mass a bit so that we get more visible
 % results.
-m_i = 0.75;
+%m_i = 0.75;
+% 2018-12-10: there was actually a conceptual piece missing with the change
+% in length according to position change, so the mass is changed back.
 
 % number of rigid bodies
 %b = 2;
@@ -194,8 +196,7 @@ kappa_i = 4.79 * lbin_in_nm;
 kappa = ones(s,1) * kappa_i;
 % On 2018-12-6, we changed cable 3 to have a higher spring constant, so it
 % has less extension, since we were running into hardware limitations.
-kappa_3 = 8.61 * lbin_in_nm;
-kappa(3) = kappa_3;
+kappa(3) = 8.61 * lbin_in_nm;
 
 % Example of how to do the 'anchored' analysis.
 % Declare a vector w \in R^n, 
@@ -228,6 +229,53 @@ pinned(4) = 1;
 % and rotation). that's 3 states: [x; z; \gamma] with
 % the angle being an intrinsic rotation.
 
+% We need the initial pose of the robot, PI_0, at which the cables are
+% calibrated. This is for the hardware test: at pose PI_0, the cables are
+% assumed to be at "perfectly 0 force", e.g. just barely not slack. For
+% example, if we fix the spine at some position, and adjust each cable so
+% it's just barely no longer slack, then we have a calibration.
+
+% For calculations with the hardware test setup, we need to know
+% where the vertebra is pinned into place for calibration. This is
+% currently (as of 2018-12-10) at:
+calibrated_position_free = [bar_endpoint; 0; 0];
+% ...because the center of that frame is at bar_endpoint, not the CoM, and
+% the robot is assumed to have zero rotation at its initial state.
+
+% The "fixed" vertebra, the leftmost one, has no translation or rotation.
+% To get the full system state, we must specify both.
+calibrated_position_fixed = [0; 0; 0];
+
+% We can then get the positions of each of the nodes. We need this for the
+% initial length calculations. It's important to note that we need it for
+% BOTH of these two vertebrae, which have different frames.
+coordinates_calibrated_fixed = get_node_coordinates_2d(a_fixed, ...
+    calibrated_position_fixed, debugging);
+% and for the free vertebra
+coordinates_calibrated_free = get_node_coordinates_2d(a_free, ...
+    calibrated_position_free, debugging);
+
+% We can then use the same trick from the invkin_core function to calculate
+% the lengths of the cables, via the C matrix. Concatenate the node
+% positions for the whole structure:
+coordinates_calibrated_x = zeros(n,1);
+coordinates_calibrated_y = zeros(n,1);
+% The outputs from get_node_coordinates are row vectors:
+coordinates_calibrated_x(1:4) = coordinates_calibrated_fixed(1,:)';
+coordinates_calibrated_x(5:8) = coordinates_calibrated_free(1,:)';
+coordinates_calibrated_y(1:4) = coordinates_calibrated_fixed(2,:)';
+coordinates_calibrated_y(5:8) = coordinates_calibrated_free(2,:)';
+% The lengths of each cable member in the two directions are (via the 
+% "cable" rows of C),
+dx0 = C(1:4,:) * coordinates_calibrated_x;
+dy0 = C(1:4,:) * coordinates_calibrated_y;
+% so the lengths of each cable are the euclidean norm of each 2-vector,
+% re-organize:
+D0 = [dx0, dy0];
+% the row norm here is then the length.
+lengths_0 = vecnorm(D0, 2, 2);
+
+% Now, for the trajectory as the robot moves:
 % The trajectory generation function gives back a sequence of states for
 % which we require cable inputs.
 % Let's do a trajectory that sweeps from 0 to pi/8.
@@ -249,14 +297,9 @@ translation_0 = [bar_endpoint * (3/4); 0];
 %num_points = 400;
 % For doing the hardware test: the motor controller doesn't have great
 % resolution. So, do a smaller number of poins.
-num_points = 5;
+%num_points = 5;
 %num_points = 2;
-
-% For calculations with the hardware test setup, we need to know
-% where the vertebra is calibrated from. We'll then take a difference in
-% lengths between these two positions.
-calibrated_position = [bar_endpoint; 0];
-% ...because the center of that frame is at bar_endpoint, not the CoM.
+num_points = 10;
 
 % For the frames we've chosen, it doesn't make sense to rotate the vertebra
 % around the origin: we don't want it to sweep out from the tip of the
@@ -434,50 +477,76 @@ end
 
 % For use with the hardware example, it's easier to instead define a
 % control input that's the amount of "stretch" a cable experiences.
-% Since this is the definition of F = \kappa * stretch, just obviously the
-% amount of spring extension, we can calculate this quantity without even
-% using length.
+% Note that we also save a difference from Pi_0, the calibrated position.
+% Some algebra shows that the control input here is stretch added to the
+% delta of absolute cable lengths from Pi_0 to lengths_i.
 stretch_opt = zeros(s, num_points);
+lengths_diff = zeros(s, num_points);
+stretch_opt_adj = zeros(s, num_points);
 for k=1:s
     % For cable k, divide the row in f_opt by kappa(k)
-    % Also, for the hardware test, convert to cm because we're using
-    % single-precision floating point numbers.
-    stretch_opt(k, :) = (f_opt(k,:) ./ kappa(k)) * 100;
+    stretch_opt(k, :) = (f_opt(k,:) ./ kappa(k));
+    % the length difference is a subtraction from the initial pose
+    % note that lengths_0 is transposed as calculated above.
+    % We're iterating over cables, so need to index into the initial
+    % lengths. Abusing some MATLAb broadcasting here (properly, ones(1,k)
+    % multiplied by lengths_0(k).)
+    lengths_diff(k,:) = lengths_0(k)' - lengths(k,:);
+    % and then add to the adjusted stretch,
+    % ALSO SCALE TO GET CM, since the microcontroller uses that best, not
+    % meters.
+    stretch_opt_adj(k,:) = (stretch_opt(k,:) + lengths_diff(k,:)) * 100;
 end
 
-% Now, we have to adjust by the offsets in position, since the total length
-% changes. First, the difference between the calibrated position and the
-% initial equilibrium state will be needed to be subtracted away.
-% The length calculation for the calibrated position can be done as
+% % Now, we have to adjust by the offsets in position, since the total length
+% % changes. First, the difference between the calibrated position and the
+% % initial equilibrium state will be needed to be subtracted away.
+% % The length calculation for the calibrated position can be done as
+% 
+% % The locations of each of the nodes for the moving vertebra:
+% calibrated_nodes_free = a_free + calibrated_position;
+% calibrated_nodes_fixed = a_fixed;
+% calibrated_nodes_x(1:4, i) = calibrated_nodes_fixed(1,:)';
+% calibrated_nodes_x(5:8, i) = calibrated_nodes_free(1,:)';
+% calibrated_nodes_y(1:4, i) = calibrated_nodes_fixed(2,:)';
+% calibrated_nodes_y(5:8, i) = calibrated_nodes_free(2,:)';
+% %H_hat = [eye(s), zeros(s, r)];
+% % all the lengths of each cable are:
+% dx0 = C(1:4,:) * calibrated_nodes_x;
+% dz0 = C(1:4,:) * calibrated_nodes_y;
+% 
+% % so the lengths of each cable are the euclidean norm of each 2-vector.
+% % re-organize:
+% D0 = [dx0, dz0];
 
-% The locations of each of the nodes for the moving vertebra:
-calibrated_nodes_free = a_free + calibrated_position;
-calibrated_nodes_fixed = a_fixed;
-calibrated_nodes_x(1:4, i) = calibrated_nodes_fixed(1,:)';
-calibrated_nodes_x(5:8, i) = calibrated_nodes_free(1,:)';
-calibrated_nodes_y(1:4, i) = calibrated_nodes_fixed(2,:)';
-calibrated_nodes_y(5:8, i) = calibrated_nodes_free(2,:)';
-%H_hat = [eye(s), zeros(s, r)];
-% all the lengths of each cable are:
-dx0 = C(1:4,:) * calibrated_nodes_x;
-dz0 = C(1:4,:) * calibrated_nodes_y;
+% % the scalar lengths are then the 2-norm (euclidean) for each column, which
+% % is
+% % lengths_0 = vecnorm(D0, 2, 2);
+% % the difference that needs to be added is this amount minus current
+% % length.
+% % in cm:
+% lengths_adj = (lengths_0 - lengths)*100;
+% 
+% % the stretches then will be adjusted by this amount. Needs to be additive.
+% stretch_opt = stretch_opt + lengths_adj;
 
-% so the lengths of each cable are the euclidean norm of each 2-vector.
-% re-organize:
-D0 = [dx0, dz0];
-
-% the scalar lengths are then the 2-norm (euclidean) for each column, which
-% is
-lengths0 = vecnorm(D0, 2, 2);
-% the difference that needs to be added is this amount minus current
-% length.
-% in cm:
-lengths_adj = (lengths0 - lengths)*100;
-
-% the stretches then will be adjusted by this amount. Needs to be additive.
-stretch_opt = stretch_opt + lengths_adj;
-
-% Then, fo
+% A quick plot of the changes in cable lengths.
+figure; 
+hold on;
+subplot(4,1,1)
+hold on;
+title('Cable Inputs (Amount of Retraction From Calibration)');
+plot(stretch_opt_adj(1,:))
+ylabel('1 (cm)');
+subplot(4,1,2)
+plot(stretch_opt_adj(2,:))
+ylabel('2 (cm)');
+subplot(4,1,3)
+plot(stretch_opt_adj(3,:))
+ylabel('3 (cm)');
+subplot(4,1,4);
+plot(stretch_opt_adj(4,:));
+ylabel('4 (cm)');
 
 %% Plot the structure, for reference.
 
@@ -489,6 +558,8 @@ radius = 0.005; % meters.
 % Basic command:
 % plot_2d_tensegrity_invkin(C, x, y, s, radius);
 % We want to get the first and last coordinates.
+% Reference configuration state:
+plot_2d_tensegrity_invkin(C, coordinates_calibrated_x, coordinates_calibrated_y, s, radius);
 % Initial position:
 plot_2d_tensegrity_invkin(C, x(:,1), y(:,1), s, radius);
 % Final position:
@@ -505,7 +576,7 @@ savefile_path = '~/';
 n_or_b = 1;
 %save_invkin_results_2d(u_opt, n, r, n_or_b, savefile_path);
 % For the hardware test, we want to use "stretch" not rest length.
-save_invkin_results_2d(stretch_opt, n, r, n_or_b, savefile_path);
+%save_invkin_results_2d(stretch_opt_adj, n, r, n_or_b, savefile_path);
 
 
 
