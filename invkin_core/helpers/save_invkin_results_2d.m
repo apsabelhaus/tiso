@@ -1,13 +1,14 @@
 % save_invkin_results_2d.m
 % Copyright Andrew P. Sabelhaus and BEST Lab, 2018
 
-function save_invkin_results_2d(u_opt, n, r, n_or_b, path)
+function save_invkin_results_2d(u_opt, xi, n, r, n_or_b, path)
 % save_invkin_results_2d saves the optimal rest lengths for a trajectory of
 % inverse kinematics calculations in 2d. 
 %
 % Inputs:
 %   u_opt = an s x num_points matrix of optimal rest lengths, calculated
 %       f_opt via the spring constant k.
+%   xi = the trajectory of states that were used to calculate u_opt.
 %   n = scalar, number of nodes, for a debugging message printed to file
 %   s = scalar, number of cables, for a debugging message printed to file
 %   r = scalar, number of bars, for a debugging message printed to file
@@ -55,7 +56,7 @@ s4 = sprintf('%i, %s, %i, %i, %i, %s', d, start_time_string, n, s, r, method);
 
 % describe what the outputs are.
 %s5 = 'Optimal rest lengths for each cable starting from cable 1 up to cable s (rows are timestep and columns are cable):';
-s5 = 'Inputs: row = timestep and col = cable no.';
+s5 = 'Inputs: row = timestep and col = cable no.,Col > s = states,States are x y rot (per body)';
 
 %% Write the header
 
@@ -80,10 +81,13 @@ fclose(fid);
 
 %% Write the inv kin results themselves
 
+% We need to concatenate the states to the inverse kinematics inputs.
+output = [u_opt', xi'];
+
 % csvwrite does this nicely for us.
 % actually there's no append option there, so use dlmwrite just with a
 % comma as the delimiter.
-dlmwrite(full_filepath, u_opt', '-append');
+dlmwrite(full_filepath, output, '-append');
 
 end
 

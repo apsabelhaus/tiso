@@ -308,10 +308,13 @@ lengths_0 = vecnorm(D0, 2, 2);
 % Let's do a trajectory that sweeps from 0 to pi/8.
 %max_sweep = pi/8;
 %max_sweep = pi/12;
-max_sweep = pi/16;
+%max_sweep = pi/16;
+% To swing the vertebra down slowly, do a sweep to a negative number.
+max_sweep = -pi/16;
 % Now, also include a minimum. This was 0 before. Now, we can start "down"
 % somewhere and bend upward.
-min_sweep = -pi/16;
+%min_sweep = -pi/16;
+min_sweep = 0;
 % with the the vertebra horizontal-sideways,
 % The local frame needs to be rotated by
 %rotation_0 = -pi/2;
@@ -330,7 +333,8 @@ translation_0 = [bar_endpoint * (3/4); 0];
 % resolution. So, do a smaller number of poins.
 %num_points = 5;
 %num_points = 2;
-num_points = 10;
+%num_points = 10;
+num_points = 20;
 
 % For the frames we've chosen, it doesn't make sense to rotate the vertebra
 % around the origin: we don't want it to sweep out from the tip of the
@@ -599,6 +603,8 @@ plot_2d_tensegrity_invkin(C, x(:,1), y(:,1), s, radius);
 % Final position:
 plot_2d_tensegrity_invkin(C, x(:,end), y(:,end), s, radius);
 
+% In order to use this date
+
 %% Save the data.
 
 % path to store: ***CHANGE THIS PER-USER***
@@ -610,7 +616,7 @@ savefile_path = '~/';
 n_or_b = 1;
 %save_invkin_results_2d(u_opt, n, r, n_or_b, savefile_path);
 % For the hardware test, we want to use "stretch" not rest length.
-%save_invkin_results_2d(stretch_opt_adj, n, r, n_or_b, savefile_path);
+save_invkin_results_2d(stretch_opt_adj, xi_all, n, r, n_or_b, savefile_path);
 
 
 
