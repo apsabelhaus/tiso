@@ -5,7 +5,7 @@
 % It includes full position state information, and is a kinematic
 % trajectory (NOT dynamic.)
 
-function [xi_all] = trajectory_XZT_bend_2d(translation_0, rotation_0, max_sweep, rot_axis_pt, num_points)
+function [xi_all] = trajectory_XZT_bend_2d(translation_0, rotation_0, min_sweep, max_sweep, rot_axis_pt, num_points)
 % Inputs:
 %   translation_0 = translation of CoM of moving body, at sweep = 0. For the
 %       horizontal 2d spine, a good choice is bar_endpoint * (2/3).
@@ -35,7 +35,8 @@ xi_all(3,:) = rotation_0;
 
 % We'll span out all the angles to insert.
 % beta is sweep angle.
-beta_0 = 0;
+%beta_0 = 0;
+beta_0 = min_sweep;
 beta = linspace(beta_0, max_sweep, num_points)';
 
 % In order to keep the moving body parallel to the sweept-out centerling

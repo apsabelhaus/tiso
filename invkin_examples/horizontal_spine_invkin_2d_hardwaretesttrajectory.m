@@ -194,9 +194,36 @@ kappa_i = 4.79 * lbin_in_nm;
 % ...which happens to be
 %kappa_i = 270;
 kappa = ones(s,1) * kappa_i;
-% On 2018-12-6, we changed cable 3 to have a higher spring constant, so it
+% On 2018-12-6, we changed cable 3 and 4 to have a higher spring constant, so it
 % has less extension, since we were running into hardware limitations.
-kappa(3) = 8.61 * lbin_in_nm;
+%kappa(3) = 8.61 * lbin_in_nm;
+% with the 25 lb/in spring:
+kappa(3) = 25.4 * lbin_in_nm;
+kappa(4) = 25.4 * lbin_in_nm;
+%kappa(4) = 8.61 * lbin_in_nm;
+
+
+% Some dimensions of the springs.
+% We need to check for collisions / add this to the formulation as a
+% constraint.
+% The spring extender length (which is added to spring initial length) is 
+% 1 inch, but the spring hooks to the end of the outer loop, so it's 1.13
+% effectively.
+extender_length = 1.13 * 2.54 * 0.01;
+% The initial lengths of each of the springs used, according to those
+% spring constants.
+l_init_8 = 1 * 2.54 * 0.01;
+l_init_4 = 1 * 2.54 * 0.01;
+l_init_25 = 0.75 * 2.54 * 0.01;
+% For cables 3 and 4, we also need to adjust for the little cable
+% adjustment screw mechanism. It puts the spring tip at its center, and
+% adds an extra few mm from its center to edge. Measured roughly (cm -> m)
+adjuster_length = 0.36 * 0.01;
+%initial_lengths = [l_init_4; l_init_4; l_init_8; l_init_4];
+initial_lengths = [l_init_4; l_init_4; l_init_25 + adjuster_length; ...
+    l_init_25 + adjuster_length];
+% So, the total length to subtract from the rest length is
+init_len_offset = initial_lengths + extender_length;
 
 % Example of how to do the 'anchored' analysis.
 % Declare a vector w \in R^n, 
@@ -280,7 +307,11 @@ lengths_0 = vecnorm(D0, 2, 2);
 % which we require cable inputs.
 % Let's do a trajectory that sweeps from 0 to pi/8.
 %max_sweep = pi/8;
-max_sweep = pi/12;
+%max_sweep = pi/12;
+max_sweep = pi/16;
+% Now, also include a minimum. This was 0 before. Now, we can start "down"
+% somewhere and bend upward.
+min_sweep = -pi/16;
 % with the the vertebra horizontal-sideways,
 % The local frame needs to be rotated by
 %rotation_0 = -pi/2;
@@ -309,7 +340,8 @@ num_points = 10;
 rot_axis_pt = [back_x*(2/3); 0];
 
 % get the trajectory:
-[xi_all] = trajectory_XZT_bend_2d(translation_0, rotation_0, max_sweep, rot_axis_pt, num_points);
+[xi_all] = trajectory_XZT_bend_2d(translation_0, rotation_0, min_sweep, ...
+    max_sweep, rot_axis_pt, num_points);
 
 % use \xi for the system states.
 %xi = zeros(b * 3, 1);
@@ -472,7 +504,9 @@ u_opt = zeros(s, num_points);
 % cables and not over timesteps.
 for k=1:s
     % For cable k, divide the row in f_opt by kappa(k)
-    u_opt(k, :) = lengths(k,:) - (f_opt(k,:) ./ kappa(k));
+    % But, now include the length offset term. Accounts for the initial
+    % spring length, as well as the little extender we had to use.
+    u_opt(k, :) = lengths(k,:) - init_len_offset(k) - (f_opt(k,:) ./ kappa(k));
 end
 
 % For use with the hardware example, it's easier to instead define a
