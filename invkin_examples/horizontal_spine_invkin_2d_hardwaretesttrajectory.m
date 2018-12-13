@@ -308,13 +308,13 @@ lengths_0 = vecnorm(D0, 2, 2);
 % Let's do a trajectory that sweeps from 0 to pi/8.
 %max_sweep = pi/8;
 %max_sweep = pi/12;
-%max_sweep = pi/16;
+max_sweep = pi/16;
 % To swing the vertebra down slowly, do a sweep to a negative number.
-max_sweep = -pi/16;
+%max_sweep = -pi/16;
 % Now, also include a minimum. This was 0 before. Now, we can start "down"
 % somewhere and bend upward.
-%min_sweep = -pi/16;
-min_sweep = 0;
+min_sweep = -pi/16;
+%min_sweep = 0;
 % with the the vertebra horizontal-sideways,
 % The local frame needs to be rotated by
 %rotation_0 = -pi/2;
@@ -610,6 +610,27 @@ plot_2d_tensegrity_invkin(C, x(:,end), y(:,end), s, radius);
 % path to store: ***CHANGE THIS PER-USER***
 % for now, use the user's home directory.
 savefile_path = '~/';
+
+% As a final hack for mid-december 2018, to correlate with the computer
+% vision data, express the states in terms of their center of mass.
+% This is because the the tracking marker on the spine vertebra is at the
+% CoM not the geometric center of the local frame of the moving vertebra.
+xi_moving = xi_all(4:6, :);
+com_offset = [center_x; 0];
+% rotate the CoM offset by the body's rotation, and then add it back in to
+% each state.
+for t=1:num_points
+    % Rotate for this timestep
+    gamma = xi_moving(3, t);
+    rot = [cos(gamma),  -sin(gamma);
+           sin(gamma),   cos(gamma)]; 
+    com_adjusted = rot * com_offset
+    % add it back in.
+    xi_moving(1:2, t) = xi_moving(1:2, t) + com_adjusted;
+end
+
+% recombined the states
+xi_all(4:6, :) = xi_moving;
 
 % write the actual data
 % we used the rigid body reformulation method here, 
