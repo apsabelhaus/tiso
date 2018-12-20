@@ -172,4 +172,4 @@ Hrb = eye(s+1);
 [q6, ~, exitflag6, ~] = quadprog(H, f, Ai, bi, Wf*An, Wf*p,[],[],[],options); % nodal, tension constraints
 [qs3, ~, exitflags3, ~] = quadprog(Hrb, fs, [Aib [zeros(s,1);-ones(s,1)]], [bi;zeros(s,1)], [Ab zeros(2*d*b,1)], beq_m); % rigid body
 
-plot_3d_tensegrity_invkin(C,s,w,x,y,z);
+plot_3d_tensegrity_invkin(C,s,Wf,x,y,z);

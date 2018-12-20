@@ -105,6 +105,7 @@ xi(7:12) = [bar_endpoint * (3/4);
             pi/2;
             0];
 coordinates = get_node_coordinates_3d(a, xi, debugging);
+
 x = coordinates(1,:)';
 y = coordinates(2,:)';
 z = coordinates(3,:)';
