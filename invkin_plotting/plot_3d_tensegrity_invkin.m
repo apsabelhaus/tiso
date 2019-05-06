@@ -1,4 +1,4 @@
-function plot = plot_3d_tensegrity_invkin(C,s,w,x,y,z)
+function plot = plot_3d_tensegrity_invkin(C,s,W,x,y,z)
     % Retrieving Parameters
     [m,n] = size(C);
     
@@ -12,7 +12,7 @@ function plot = plot_3d_tensegrity_invkin(C,s,w,x,y,z)
     % Plotting Nodes
     for i = 1:n
         % Logic for plotting anchors vs no anchors
-        if w(i)==0
+        if W(i,i)==0
             plot3(x(i),y(i),z(i),'^','MarkerSize',5,'Color',[0,1,0]);
             plot3(x(i),y(i),z(i),'.','MarkerSize',5,'Color',[0,0,0]);
         else
