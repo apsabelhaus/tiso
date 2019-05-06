@@ -510,7 +510,8 @@ for k=1:s
     % For cable k, divide the row in f_opt by kappa(k)
     % But, now include the length offset term. Accounts for the initial
     % spring length, as well as the little extender we had to use.
-    u_opt(k, :) = lengths(k,:) - init_len_offset(k) - (f_opt(k,:) ./ kappa(k));
+    %u_opt(k, :) = lengths(k,:) - init_len_offset(k) - (f_opt(k,:) ./ kappa(k));
+    u_opt(k, :) = lengths(k,:) - (f_opt(k,:) ./ kappa(k));
 end
 
 % For use with the hardware example, it's easier to instead define a
@@ -624,20 +625,20 @@ for t=1:num_points
     gamma = xi_moving(3, t);
     rot = [cos(gamma),  -sin(gamma);
            sin(gamma),   cos(gamma)]; 
-    com_adjusted = rot * com_offset
+    com_adjusted = rot * com_offset;
     % add it back in.
     xi_moving(1:2, t) = xi_moving(1:2, t) + com_adjusted;
 end
 
 % recombined the states
-xi_all(4:6, :) = xi_moving;
+%xi_all(4:6, :) = xi_moving;
 
 % write the actual data
 % we used the rigid body reformulation method here, 
 n_or_b = 1;
-%save_invkin_results_2d(u_opt, n, r, n_or_b, savefile_path);
+%save_invkin_results_2d(u_opt, xi_all, n, r, n_or_b, savefile_path);
 % For the hardware test, we want to use "stretch" not rest length.
-save_invkin_results_2d(stretch_opt_adj, xi_all, n, r, n_or_b, savefile_path);
+%save_invkin_results_2d(stretch_opt_adj, xi_all, n, r, n_or_b, savefile_path);
 
 
 
