@@ -115,9 +115,6 @@ if debugging >= 2
     a_fixed
 end
 
-% Mass as measured with a scale by Jacob on 2019-05-10 was 655g.
-m_i = 0.655;
-
 % number of rigid bodies
 %b = 2;
 % When removing the anchor nodes, it's like removing one of the bodies:
@@ -131,18 +128,6 @@ b = 1;
 % Columns 1-3 are anchor nodes
 % Columns 4-7 are free vertebra nodes
 
-%    1  2  3  4  5  6  7  8  
-C = [1  0  0  0  0 -1  0  0;  %  1, cable 1, horizontal bottom
-     0  0  0  1  0  0 -1  0;  %  2, cable 2, horizontal top
-     0  1  0  0  0 -1  0  0;  %  3, cable 3, saddle bottom
-     0  0  1  0  0  0 -1  0;  %  4, cable 4, saddle top
-     1 -1  0  0  0  0  0  0;  %  5, bar 1, bottom mounting point connection
-     0  1 -1  0  0  0  0  0;  %  6, ...
-     0  0  1 -1  0  0  0  0;  %  7, ...
-     0  0  0  0  1 -1  0  0;  %  8, ..., free vertebra bar 1
-     0  0  0  0  1  0 -1  0;  %  9, ...
-     0  0  0  0  1  0  0 -1]; % 10, bar 6
-
 %    A  B  C  c  bb bt f
 %    1  2  3  4  5  6  7  
 C = [1  0  0  0  -1 0  0;  %  1, cable 1, horizontal bottom
@@ -153,8 +138,7 @@ C = [1  0  0  0  -1 0  0;  %  1, cable 1, horizontal bottom
      0  1  -1 0  0  0  0;  %  6, ...
      0  0  0  1 -1  0  0;  %  7, bar 3, free vertebra bar 1
      0  0  0  1  0 -1  0;  %  8, ...
-     0  0  0  1  0 -1  0;  %  9, bar 6
-     0  0  0  1  0  0 -1]; % 10, bar 6
+     0  0  0  1  0  0 -1]; %  9, bar 6
 
 % Need to specify number of cables, to split up C.
 s = 4;
@@ -175,28 +159,18 @@ end
 g = 9.81;
 %g = -9.81;
 
-% mass per vertebra
-% let's say each vertebra weighs 0.8 kg. Thta's about 1.7 lbs, which seems
-% right to Drew if motors are included.
-%m_i = 0.8;
-% 2018-11-28: updated above alongside the dimensions for the hardware test
-% of fall 2018.
-
 % Note here that I've used m_i as per-body not per-node.
 % Probably accidentally changed notation w.r.t. T-CST 2018 paper.
-% 4 nodes per body, so
-m_node = m_i/4;
 
-% and in vector form,
-%m = ones(n, 1) * m_node;
+% Mass as measured with a scale by Jacob on 2019-05-10 was 655g.
+m_i = 0.655;
 
 % 2018-12-6: let's see if we just assign all the mass to the center of mass
-% node. For the moving vertebra, that's node 1, e.g. 5 overall.
+% node. 2019-50-13: that's node 4, little "c" Center of Mass.
 m = zeros(n,1);
-m(5) = m_i;
-% and we can distribute the masses over the first vertebra - not that it
-% matters, since we're throwing out those nodes.
-m(1:4) = ones(4,1) * m_node;
+m(4) = m_i;
+% since we're throwing out the anchor points in the force balance, leave
+% those masses as zero.
 
 % Spring constant for the cables. This isn't used in the optimization for
 % force (densities) itself, but for conversion into inputs when saving the
@@ -223,24 +197,67 @@ kappa(4) = 25.4 * lbin_in_nm;
 % Some dimensions of the springs.
 % We need to check for collisions / add this to the formulation as a
 % constraint.
-% The spring extender length (which is added to spring initial length) is 
-% 1 inch, but the spring hooks to the end of the outer loop, so it's 1.13
-% effectively.
-extender_length = 1.13 * 2.54 * 0.01;
-% The initial lengths of each of the springs used, according to those
-% spring constants.
+
+% The initial lengths of each of the springs used, from the manufactuter,
+% listed here according to their spring constants.
+% NOTE that this is TIP-TO-TIP: put the whole spring in the calipers and
+% you get this number. This is *NOT* center to center.
 l_init_8 = 1 * 2.54 * 0.01;
 l_init_4 = 1 * 2.54 * 0.01;
 l_init_25 = 0.75 * 2.54 * 0.01;
-% For cables 3 and 4, we also need to adjust for the little cable
-% adjustment screw mechanism. It puts the spring tip at its center, and
-% adds an extra few mm from its center to edge. Measured roughly (cm -> m)
-adjuster_length = 0.36 * 0.01;
+
+% The spring extender length (which is added to spring initial length) is 
+% 1 inch CENTER TO CENTER of the loops, but the spring hooks to the end of 
+% the outer loop, and it's 0.13 inch from center to inside of the
+% extender's hook, so total from node (center on one end) to spring tip is
+% 1.13 inch. HOWEVER, since the spring is curved, the tip doesn't sit
+% exactly at the edge. That extra delta is 1.1 mm (0.0011 m), subtracted
+% away.
+extender_length = 1.13 * 2.54 * 0.01 - (0.0011);
+
+% We also need to account for the screw tensioner mechanism.
+% There are two in use here:
+% one with a single screw point, and 
+% one with two screws (one spring, one cable.)
+
+% For both of these, we'll make the following assumption:
+% Screw is held against edge of spring hook,
+% cable is tightened against screw from the other side.
+% So, for the single-screw tensioner, we're just looking at the diameter of
+% the screw which needs to be subtracted from spring. We have M3 screws.
+% If need more precision later: include thickness of spring wire.
+tensioner_single_length = 0.003;
+
+% For the single-screw tensioner, the spring tip is its center, 
+% adding an extra few mm from its center to edge. Measured roughly (cm -> m)
+% TO-DO: adjust this more if we get noisy data. Account for screw diameter,
+% use that instead, since the cable is really looped around the screw, then
+% also in addition account for the offset from center (edge??) of spring
+% loop.
+% adjuster_length = 0.36 * 0.01;
+% tensioner_single_length = 0.36 * 0.01;
+
+% For the double-screw tensioner, 
+% center-to-center of the two screws SHOULD be 9mm, but Drew measured 1 cm.
+% minus the radius of the screw on each side equals a full diameter (3mm), 
+% so inside-edge of screw to inside-edge is
+tensioner_double_length = 0.007;
+
 %initial_lengths = [l_init_4; l_init_4; l_init_8; l_init_4];
-initial_lengths = [l_init_4; l_init_4; l_init_25 + adjuster_length; ...
-    l_init_25 + adjuster_length];
+
+% The "initial lengths" here are then total distance from node center to
+% connection point of cable.
+% Cables 1 and 2 (top and bottom) use the 4 lb/in springs, and cables 3 and
+% 4 (saddles) use the 25 lb/in spring.
+% Also, 1,2 use double extenders, 3,4 use single extenders.
+initial_lengths = [l_init_4 + extender_length + tensioner_double_length; 
+                   l_init_4 + extender_length + tensioner_double_length; 
+                   l_init_25 + extender_length + tensioner_single_length;
+                   l_init_25 + extender_length + tensioner_single_length];
+
 % So, the total length to subtract from the rest length is
-init_len_offset = initial_lengths + extender_length;
+% init_len_offset = initial_lengths + extender_length;
+% ...now inclu
 
 % Example of how to do the 'anchored' analysis.
 % Declare a vector w \in R^n, 

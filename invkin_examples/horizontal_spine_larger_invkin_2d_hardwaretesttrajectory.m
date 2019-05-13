@@ -197,32 +197,76 @@ kappa(4) = 25.4 * lbin_in_nm;
 % Some dimensions of the springs.
 % We need to check for collisions / add this to the formulation as a
 % constraint.
-% The spring extender length (which is added to spring initial length) is 
-% 1 inch, but the spring hooks to the end of the outer loop, so it's 1.13
-% effectively.
-extender_length = 1.13 * 2.54 * 0.01;
-% The initial lengths of each of the springs used, according to those
-% spring constants.
+
+% The initial lengths of each of the springs used, from the manufactuter,
+% listed here according to their spring constants.
+% NOTE that this is TIP-TO-TIP: put the whole spring in the calipers and
+% you get this number. This is *NOT* center to center.
 l_init_8 = 1 * 2.54 * 0.01;
 l_init_4 = 1 * 2.54 * 0.01;
 l_init_25 = 0.75 * 2.54 * 0.01;
-% For cables 3 and 4, we also need to adjust for the little cable
-% adjustment screw mechanism. It puts the spring tip at its center, and
-% adds an extra few mm from its center to edge. Measured roughly (cm -> m)
-adjuster_length = 0.36 * 0.01;
+
+% The spring extender length (which is added to spring initial length) is 
+% 1 inch CENTER TO CENTER of the loops, but the spring hooks to the end of 
+% the outer loop, and it's 0.13 inch from center to inside of the
+% extender's hook, so total from node (center on one end) to spring tip is
+% 1.13 inch. HOWEVER, since the spring is curved, the tip doesn't sit
+% exactly at the edge. That extra delta is 1.1 mm (0.0011 m), subtracted
+% away.
+extender_length = 1.13 * 2.54 * 0.01 - (0.0011);
+
+% We also need to account for the screw tensioner mechanism.
+% There are two in use here:
+% one with a single screw point, and 
+% one with two screws (one spring, one cable.)
+
+% For both of these, we'll make the following assumption:
+% Screw is held against edge of spring hook,
+% cable is tightened against screw from the other side.
+% So, for the single-screw tensioner, we're just looking at the diameter of
+% the screw which needs to be subtracted from spring. We have M3 screws.
+% If need more precision later: include thickness of spring wire.
+tensioner_single_length = 0.003;
+
+% For the single-screw tensioner, the spring tip is its center, 
+% adding an extra few mm from its center to edge. Measured roughly (cm -> m)
+% TO-DO: adjust this more if we get noisy data. Account for screw diameter,
+% use that instead, since the cable is really looped around the screw, then
+% also in addition account for the offset from center (edge??) of spring
+% loop.
+% adjuster_length = 0.36 * 0.01;
+% tensioner_single_length = 0.36 * 0.01;
+
+% For the double-screw tensioner, 
+% center-to-center of the two screws SHOULD be 9mm, but Drew measured 1 cm.
+% minus the radius of the screw on each side equals a full diameter (3mm), 
+% so inside-edge of screw to inside-edge is
+tensioner_double_length = 0.007;
+
 %initial_lengths = [l_init_4; l_init_4; l_init_8; l_init_4];
-initial_lengths = [l_init_4; l_init_4; l_init_25 + adjuster_length; ...
-    l_init_25 + adjuster_length];
+
+% The "initial lengths" here are then total distance from node center to
+% connection point of cable.
+% Cables 1 and 2 (top and bottom) use the 4 lb/in springs, and cables 3 and
+% 4 (saddles) use the 25 lb/in spring.
+% Also, 1,2 use double extenders, 3,4 use single extenders.
+initial_lengths = [l_init_4 + extender_length + tensioner_double_length; 
+                   l_init_4 + extender_length + tensioner_double_length; 
+                   l_init_25 + extender_length + tensioner_single_length;
+                   l_init_25 + extender_length + tensioner_single_length];
+
 % So, the total length to subtract from the rest length is
-init_len_offset = initial_lengths + extender_length;
+% init_len_offset = initial_lengths + extender_length;
+% ...now included in "initial_lengths."
+init_len_offset = initial_lengths;
 
 % Example of how to do the 'anchored' analysis.
 % Declare a vector w \in R^n, 
 % where w(i) == 1 if the node should be 'kept'.
 % For this example, want to treat body 1 as the anchored nodes.
-% So, we zero-out anchored nodes 1 through 4, and keep nodes 5-8
-% (which is vertebra two.)
-w = [0; 0; 0; 0; 1; 1; 1; 1];
+% So, we zero-out anchored nodes 1 through 3, and keep nodes 4-7
+% (which is the free vertebra.)
+w = [0; 0; 0; 1; 1; 1; 1];
 % Including all nodes:
 %w = ones(n,1);
 
@@ -233,13 +277,17 @@ w = [0; 0; 0; 0; 1; 1; 1; 1];
 % forces) and which are not.
 % We're choosing not to have this be the same as w, since there are some
 % nodes to "ignore" for w which are not necessarily built in to the ground
-% for "pinned". Example, nodes inside the leftmost vertebra, where we're
-% deciding to assume that only the tips of its "Y" are supported.
+% for "pinned". Example, nodes inside the anchored triangle of points,
+% maybe we don't want the node C to be pinned, just A and B.
 
-% So, only nodes 1 and 4 are pinned.
+% ^ 2019-05-13: this does NOT matter anymore, since we ignore the anchored
+% points in our analysis, and since we're not even calculating external
+% reaction forces anymore.
+
+% So, only nodes 1 and 2 are pinned.
 pinned = zeros(n,1);
 pinned(1) = 1;
-pinned(4) = 1;
+pinned(2) = 1;
 
 %% Trajectory of positions
 
