@@ -1,14 +1,12 @@
-%% horizontal_spine_invkin_2d_hardwaretesttrajectory.m
-% Copyright Andrew P. Sabelhaus 2018
+%% horizontal_spine_larger_invkin_2d_hardwaretesttrajectory.m
+% Copyright Andrew P. Sabelhaus 2019
 
-% This script used the tInvKin libraries to calculate the inverse
-% kinematics for a tensegrity spine, defined in 2 dimensions. 
-% As the term is used here, 'spine'
-% refers to a structure with repeated rigid bodies of the same geometry and
-% mass.
+% This script used the tInvKin libraries to calculate the optimal
+% equilibrium inputs for a single vertebra, 2D tensegrity spine: the larger
+% one used for the spring/summer 2019 data collection.
 
-% The 'trajectory' script here outputs a sequence of inverse kinematics
-% solutions, for use with control.
+% The 'trajectory' script here outputs a sequence of equilibrium rest
+% length solutions, for use with control.
 
 % Modified from original ..._trajectory script to accomodate for the small
 % geometric differences with the hardware test setup.
@@ -35,7 +33,7 @@ debugging = 1;
 
 % If appropriate, output a starting message.
 if debugging >= 1
-    disp('Starting horizontal spine 2d rigid body inverse kinematics example...');
+    disp('Starting LARGER horizontal spine 2d rigid body inverse kinematics example...');
 end
 
 % minimum cable force density
@@ -47,86 +45,92 @@ q_min = 0.5;
 % "vertebrae", but with the "fixed" one having a different frame to account
 % for the slightly different exit points of the cables from the eye hooks.
 
-% For the 2D spine control test, fall 2018, the dimensions of the vertebra
-% are as follows:
-% bar_endpoint = 4 inches
-% that's 4 * 2.54 * 0.01 = 0.1016 meters
-bar_endpoint = 0.1016;
-% BUT, the center of mass is actually offset, due to some construction
-% differences with the nonzero-thickness of the bars.
-% The center is at -0.81 inches from the geometric center.
-% We'll do the origin of this frame as the geometric center,
-% so that puts the center at 
-center_offset = 0.81 * 2.54 * 0.01;
-center_x = -center_offset;
+% As per Drew's sketched frames, the moving vertebra will have four nodes,
+% with the local origin at the geometric center of the vertebra, and all the
+% mass concentrated at node 1 (the inertial center.)
+% This results in the plot being a bit off with respect to the physical
+% vertebra - the pointy part of the "Y" will be longer in the visualization
+% here than in the physical prototype - but the physics are the same.
 
-% The endpoints are still at the bounds of an 8x8 box, which puts the frame
-% at the following.
-% We're also reorienting the Y-shape so it's in the proper rotation in its
-% default configuration.
-% 2 = bottom left, 3 = top left, 4 = right.
-a_free = [   center_x,              0;
-        -bar_endpoint,   -bar_endpoint;
-        -bar_endpoint,  bar_endpoint;
-        bar_endpoint,              0]';
-    
-% Now, for the fixed vertebra, we're going to also have four nodes,
-% but each of them will only be used as anchor points (and will be thrown
-% out of the force balance.)
-% It's more difficult to specify the center of that frame based on the
-% mechanical designs... let's choose the centerline between the two "tip"
-% eyebolts at the origin of that frame. It'll be easier to do the
-% translation that way. (there is no rotation for this one.)
-% the eyebolts are at 0.75 in from their centerpoint
-tip_y = 0.75* 2.54 * 0.01;
-% The back parts of the "Y" are at two translations: first, to a reference
-% point on the motor plate. Choose this to be the top bolt (it's mated
-% aligned in Solidworks.)
-back_plate_x = -8.5 * 2.54 * 0.01;
-back_plate_y = 3.25 * 2.54 * 0.01;
-% Then, on the motor plate, the eye bolt location is translated in X from
-% this particular location in the bolt pattern by 1.5in. (No y.)
-motor_plate_x = 1.5 * 2.54 * 0.01;
-% Therefore, the locations are
-back_x = back_plate_x + motor_plate_x;
-back_y = back_plate_y;
+% 1 = inertial center
+% 2 = back bottom, 3 = back top, 4 = right.
+% in cm:
+c_x = 2.91;
+w = 14.42;
+f_x = 16.06;
+h = 15.24;
 
-% Insert these into a full frame.
-% Nodes will be numbered from bottom to top.
-a_fixed = [     back_x,             -back_y;
-                0,                  -tip_y;
-                0,                  tip_y;
-                back_x,             back_y]';
+% w_1 = 16.06;
+% w_2 = 14.42;
+% h = 15.24;
+% w_5 = 2.91;
+
+a_free = [ -c_x,        0;
+           -w,         -h;
+           -w,          h;
+            f_x,        0]';
+        
+% In addition, we'll need to know where the dowel pin holes are on the
+% vertebra. This is used to get the initial, untensioned pose.
+% d_1 = dowel closer to CoM, d_2 = dowel closer to node 4 ("right")
+% the y-coordinate here is 0.
+d_1 = 0.82;
+d_2 = 8.44;
+        
+% We now only have three nodes for the fixed vertebra. It's a triangle.
+% These are in the GLOBAL frame!
+% A = bottom left cable anchor,
+% B = top left cable anchor,
+% C = center cable anchor (both the saddle cables exit here)
+A_x = 6.33;
+A_y = 9.55;
+B_x = 6.56;
+B_y = 40.03;
+C_x = 18.42;
+C_y = 24.77;
+
+% b_6 = 6.33;
+% u_6 = 9.55;
+% b_7 = b_6;
+% u_7 = 40.03;
+% b_8 = 18.42;
+% u_8 = 24.77;
+
+% 5 = bottom left (A), 6 = top left (B), 7 = center (C)
+a_fixed = [ -A_x,       A_y;
+            -B_x,       B_y;
+             C_x,       C_y]';
+         
+% As with the local vertebra frame, locations of the dowel pins are needed
+% to get the initial untensioned vertebra pose
+% E = dowel pin closer to anchors (left),
+% G = dowl pin on the right
+E_x = 33.66;
+E_y = 24.77;
+G_x = 41.28;
+G_y = 24.77;
 
 if debugging >= 2
     a_free
     a_fixed
 end
 
-% (e.g., vertebra is in an 8x8 inch box.)
-
-% Mass as measured with a scale on 2018-11-18 is about 500g
-m_i = 0.495;
-% For the demo on 2018-12-6, up the mass a bit so that we get more visible
-% results.
-%m_i = 0.75;
-% 2018-12-10: there was actually a conceptual piece missing with the change
-% in length according to position change, so the mass is changed back.
+% Mass as measured with a scale by Jacob on 2019-05-10 was 655g.
+m_i = 0.655;
 
 % number of rigid bodies
 %b = 2;
 % When removing the anchor nodes, it's like removing one of the bodies:
 b = 1;
 
-% Configuration matrix for WHOLE STRUCTURE. (in future, pattern out.)
+% Configuration matrix for WHOLE STRUCTURE.
 
 % Full connectivity matrix
 % Rows 1-4 are cables
-% Rows 5-10 are bars
-% Columns 1-4 are bottom tetra nodes
-% Columns 5-8 are top tetra nodes
-% This is different than the original example, since our nodes for the
-% fixed vertebra are different. Same ordering of cables though.
+% Rows 5-9 are bars
+% Columns 1-3 are anchor nodes
+% Columns 4-7 are free vertebra nodes
+
 %    1  2  3  4  5  6  7  8  
 C = [1  0  0  0  0 -1  0  0;  %  1, cable 1, horizontal bottom
      0  0  0  1  0  0 -1  0;  %  2, cable 2, horizontal top
@@ -138,6 +142,19 @@ C = [1  0  0  0  0 -1  0  0;  %  1, cable 1, horizontal bottom
      0  0  0  0  1 -1  0  0;  %  8, ..., free vertebra bar 1
      0  0  0  0  1  0 -1  0;  %  9, ...
      0  0  0  0  1  0  0 -1]; % 10, bar 6
+
+%    A  B  C  c  bb bt f
+%    1  2  3  4  5  6  7  
+C = [1  0  0  0  -1 0  0;  %  1, cable 1, horizontal bottom
+     0  1  0  0  0  -1 0;  %  2, cable 2, horizontal top
+     0  0  1  0  -1 0  0;  %  3, cable 3, saddle bottom
+     0  0  1  0  0  -1 0;  %  4, cable 4, saddle top
+     1  0  -1 0  0  0  0;  %  5, bar 1, bottom anchor triangle leg
+     0  1  -1 0  0  0  0;  %  6, ...
+     0  0  0  1 -1  0  0;  %  7, bar 3, free vertebra bar 1
+     0  0  0  1  0 -1  0;  %  8, ...
+     0  0  0  1  0 -1  0;  %  9, bar 6
+     0  0  0  1  0  0 -1]; % 10, bar 6
 
 % Need to specify number of cables, to split up C.
 s = 4;
