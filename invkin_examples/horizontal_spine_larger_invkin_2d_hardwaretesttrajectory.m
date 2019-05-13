@@ -11,6 +11,8 @@
 % Modified from original ..._trajectory script to accomodate for the small
 % geometric differences with the hardware test setup.
 
+% ALL UNITS IN METERS
+
 %% set up the workspace
 clear all;
 close all;
@@ -60,6 +62,12 @@ w = 14.42;
 f_x = 16.06;
 h = 15.24;
 
+% CONVERTED to meters:
+c_x = c_x * 10^-2;
+w  = w * 10^-2;
+f_x = f_x * 10^-2;
+h =  h * 10^-2;
+
 % w_1 = 16.06;
 % w_2 = 14.42;
 % h = 15.24;
@@ -76,6 +84,10 @@ a_free = [ -c_x,        0;
 % the y-coordinate here is 0.
 d_1 = 0.82;
 d_2 = 8.44;
+
+% CONVERTED to meters:
+d_1 = d_1 * 10^-2;
+d_2 = d_2 * 10^-2;
         
 % We now only have three nodes for the fixed vertebra. It's a triangle.
 % These are in the GLOBAL frame!
@@ -89,12 +101,13 @@ B_y = 40.03;
 C_x = 18.42;
 C_y = 24.77;
 
-% b_6 = 6.33;
-% u_6 = 9.55;
-% b_7 = b_6;
-% u_7 = 40.03;
-% b_8 = 18.42;
-% u_8 = 24.77;
+% CONVERTED to meters:
+A_x = A_x * 10^-2;
+A_y = A_y * 10^-2;
+B_x = B_x * 10^-2;
+B_y = B_y * 10^-2;
+C_x = C_x * 10^-2;
+C_y = C_y * 10^-2;
 
 % 5 = bottom left (A), 6 = top left (B), 7 = center (C)
 a_fixed = [ -A_x,       A_y;
@@ -109,6 +122,12 @@ E_x = 33.66;
 E_y = 24.77;
 G_x = 41.28;
 G_y = 24.77;
+
+% CONVERTED to meters:
+E_x = E_x * 10^-2;
+E_y = E_y * 10^-2;
+G_x = G_x * 10^-2;
+G_y = G_y * 10^-2;
 
 if debugging >= 2
     a_free
@@ -197,6 +216,8 @@ kappa(4) = 25.4 * lbin_in_nm;
 % Some dimensions of the springs.
 % We need to check for collisions / add this to the formulation as a
 % constraint.
+
+% The following are all in meters.
 
 % The initial lengths of each of the springs used, from the manufactuter,
 % listed here according to their spring constants.
@@ -292,7 +313,7 @@ pinned(2) = 1;
 %% Trajectory of positions
 
 % all the positions of each rigid body (expressed as their COM positions
-% and rotation). that's 3 states: [x; z; \gamma] with
+% and rotation). that's 3 states: [x; y; \gamma] with
 % the angle being an intrinsic rotation.
 
 % We need the initial pose of the robot, PI_0, at which the cables are
@@ -303,20 +324,34 @@ pinned(2) = 1;
 
 % For calculations with the hardware test setup, we need to know
 % where the vertebra is pinned into place for calibration. This is
-% currently (as of 2018-12-10) at:
-calibrated_position_free = [bar_endpoint; 0; 0];
+% currently (as of 2019-05-13) where the dowel pins align ("d1" in free
+% frame and "E" in fixed frame.) This is because the zero of the free frame
+% is at the geometric center, now.
+
+calibrated_position_free_x = E_x - d_1;
+calibrated_position_free_y = E_y;
+calibrated_position_free = [calibrated_position_free_x;
+                            calibrated_position_free_y;
+                            0];
+
+% (as of 2018-12-10) at:
+% calibrated_position_free = [bar_endpoint; 0; 0];
 % ...because the center of that frame is at bar_endpoint, not the CoM, and
 % the robot is assumed to have zero rotation at its initial state.
 
 % The "fixed" vertebra, the leftmost one, has no translation or rotation.
 % To get the full system state, we must specify both.
-calibrated_position_fixed = [0; 0; 0];
+% calibrated_position_fixed = [0; 0; 0];
+
+% 2019-05-13: easier to just say the global frame for fixed.
+coordinates_calibrated_anchors = a_fixed;
 
 % We can then get the positions of each of the nodes. We need this for the
 % initial length calculations. It's important to note that we need it for
 % BOTH of these two vertebrae, which have different frames.
-coordinates_calibrated_fixed = get_node_coordinates_2d(a_fixed, ...
-    calibrated_position_fixed, debugging);
+% coordinates_calibrated_fixed = get_node_coordinates_2d(a_fixed, ...
+%     calibrated_position_fixed, debugging);
+
 % and for the free vertebra
 coordinates_calibrated_free = get_node_coordinates_2d(a_free, ...
     calibrated_position_free, debugging);
@@ -327,10 +362,10 @@ coordinates_calibrated_free = get_node_coordinates_2d(a_free, ...
 coordinates_calibrated_x = zeros(n,1);
 coordinates_calibrated_y = zeros(n,1);
 % The outputs from get_node_coordinates are row vectors:
-coordinates_calibrated_x(1:4) = coordinates_calibrated_fixed(1,:)';
-coordinates_calibrated_x(5:8) = coordinates_calibrated_free(1,:)';
-coordinates_calibrated_y(1:4) = coordinates_calibrated_fixed(2,:)';
-coordinates_calibrated_y(5:8) = coordinates_calibrated_free(2,:)';
+coordinates_calibrated_x(1:3) = coordinates_calibrated_anchors(1,:)';
+coordinates_calibrated_x(4:7) = coordinates_calibrated_free(1,:)';
+coordinates_calibrated_y(1:3) = coordinates_calibrated_anchors(2,:)';
+coordinates_calibrated_y(4:7) = coordinates_calibrated_free(2,:)';
 % The lengths of each cable member in the two directions are (via the 
 % "cable" rows of C),
 dx0 = C(1:4,:) * coordinates_calibrated_x;

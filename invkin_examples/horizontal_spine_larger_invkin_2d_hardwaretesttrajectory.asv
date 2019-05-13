@@ -257,15 +257,16 @@ initial_lengths = [l_init_4 + extender_length + tensioner_double_length;
 
 % So, the total length to subtract from the rest length is
 % init_len_offset = initial_lengths + extender_length;
-% ...now inclu
+% ...now included in "initial_lengths."
+init_len_offset = initial_lengths;
 
 % Example of how to do the 'anchored' analysis.
 % Declare a vector w \in R^n, 
 % where w(i) == 1 if the node should be 'kept'.
 % For this example, want to treat body 1 as the anchored nodes.
-% So, we zero-out anchored nodes 1 through 4, and keep nodes 5-8
-% (which is vertebra two.)
-w = [0; 0; 0; 0; 1; 1; 1; 1];
+% So, we zero-out anchored nodes 1 through 3, and keep nodes 4-7
+% (which is the free vertebra.)
+w = [0; 0; 0; 1; 1; 1; 1];
 % Including all nodes:
 %w = ones(n,1);
 
@@ -276,18 +277,22 @@ w = [0; 0; 0; 0; 1; 1; 1; 1];
 % forces) and which are not.
 % We're choosing not to have this be the same as w, since there are some
 % nodes to "ignore" for w which are not necessarily built in to the ground
-% for "pinned". Example, nodes inside the leftmost vertebra, where we're
-% deciding to assume that only the tips of its "Y" are supported.
+% for "pinned". Example, nodes inside the anchored triangle of points,
+% maybe we don't want the node C to be pinned, just A and B.
 
-% So, only nodes 1 and 4 are pinned.
+% ^ 2019-05-13: this does NOT matter anymore, since we ignore the anchored
+% points in our analysis, and since we're not even calculating external
+% reaction forces anymore.
+
+% So, only nodes 1 and 2 are pinned.
 pinned = zeros(n,1);
 pinned(1) = 1;
-pinned(4) = 1;
+pinned(2) = 1;
 
 %% Trajectory of positions
 
 % all the positions of each rigid body (expressed as their COM positions
-% and rotation). that's 3 states: [x; z; \gamma] with
+% and rotation). that's 3 states: [x; y; \gamma] with
 % the angle being an intrinsic rotation.
 
 % We need the initial pose of the robot, PI_0, at which the cables are
@@ -298,7 +303,12 @@ pinned(4) = 1;
 
 % For calculations with the hardware test setup, we need to know
 % where the vertebra is pinned into place for calibration. This is
-% currently (as of 2018-12-10) at:
+% currently (as of 2019-05-13) where the dowel pins align ("d1" in free
+% frame and "E" in fixed fr
+calibrated_position_free_x = 
+
+
+% (as of 2018-12-10) at:
 calibrated_position_free = [bar_endpoint; 0; 0];
 % ...because the center of that frame is at bar_endpoint, not the CoM, and
 % the robot is assumed to have zero rotation at its initial state.
