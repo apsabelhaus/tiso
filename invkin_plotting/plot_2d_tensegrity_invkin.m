@@ -83,7 +83,8 @@ bar_color = black;
 handles = {};
 
 % We want the nodes to be a bit bigger than the bars.
-node_rad = 2 * rad;
+% ...but not that much.
+node_rad = 1.1 * rad;
 
 % Labeling the nodes needs to happen with some offset from the point
 % itself, so that the sphere doesn't overtake the point.

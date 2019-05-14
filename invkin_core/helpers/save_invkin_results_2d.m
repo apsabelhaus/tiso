@@ -7,7 +7,8 @@ function save_invkin_results_2d(u_opt, xi, n, r, n_or_b, path)
 %
 % Inputs:
 %   u_opt = an s x num_points matrix of optimal rest lengths, calculated
-%       f_opt via the spring constant k.
+%       f_opt via the spring constant k. 
+%       Or, whatever input would like to be saved (could do stretch).
 %   xi = the trajectory of states that were used to calculate u_opt.
 %   n = scalar, number of nodes, for a debugging message printed to file
 %   s = scalar, number of cables, for a debugging message printed to file
