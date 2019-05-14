@@ -41,7 +41,8 @@ end
 % minimum cable force density
 %q_min = 0; % units of N/m, depending on m and g
 % q_min = 0.5;
-q_min = 1.5;
+% q_min = 1.5;
+q_min = 1.0;
 %q_min = 0.1;
 
 % minimum rest length. Some small constant. In meters.
@@ -770,7 +771,7 @@ savefile_path = strcat(pwd, filesep);
 n_or_b = 1;
 %save_invkin_results_2d(u_opt, xi_all, n, r, n_or_b, savefile_path);
 % For the hardware test, we want to use "stretch" not rest length.
-% save_invkin_results_2d(stretch_opt_adj, xi_all, n, r, n_or_b, savefile_path);
+save_invkin_results_2d(stretch_opt_adj, xi_all, n, r, n_or_b, savefile_path);
 
 % 2019-05-13: The reason why we got poor results in December was probably
 % because of the above line, where "xi_all" was saved, not "xi_moving."
