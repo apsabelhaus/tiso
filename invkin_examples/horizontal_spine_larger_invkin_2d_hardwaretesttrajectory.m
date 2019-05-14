@@ -40,9 +40,9 @@ end
 
 % minimum cable force density
 %q_min = 0; % units of N/m, depending on m and g
-% q_min = 0.5;
+q_min = 0.5;
 % q_min = 1.5;
-q_min = 1.0;
+% q_min = 1.0;
 %q_min = 0.1;
 
 % minimum rest length. Some small constant. In meters.
@@ -228,73 +228,73 @@ kappa(4) = 25.4 * lbin_in_nm;
 
 %% Unused spring initial length calculations
 
-% % Some dimensions of the springs.
-% % We need to check for collisions / add this to the formulation as a
-% % constraint.
-% 
-% % The following are all in meters.
-% 
-% % The initial lengths of each of the springs used, from the manufactuter,
-% % listed here according to their spring constants.
-% % NOTE that this is TIP-TO-TIP: put the whole spring in the calipers and
-% % you get this number. This is *NOT* center to center.
-% l_init_8 = 1 * 2.54 * 0.01;
-% l_init_4 = 1 * 2.54 * 0.01;
-% l_init_25 = 0.75 * 2.54 * 0.01;
-% 
-% % The spring extender length (which is added to spring initial length) is 
-% % 1 inch CENTER TO CENTER of the loops, but the spring hooks to the end of 
-% % the outer loop, and it's 0.13 inch from center to inside of the
-% % extender's hook, so total from node (center on one end) to spring tip is
-% % 1.13 inch. HOWEVER, since the spring is curved, the tip doesn't sit
-% % exactly at the edge. That extra delta is 1.1 mm (0.0011 m), subtracted
-% % away.
-% extender_length = 1.13 * 2.54 * 0.01 - (0.0011);
-% 
-% % We also need to account for the screw tensioner mechanism.
-% % There are two in use here:
-% % one with a single screw point, and 
-% % one with two screws (one spring, one cable.)
-% 
-% % For both of these, we'll make the following assumption:
-% % Screw is held against edge of spring hook,
-% % cable is tightened against screw from the other side.
-% % So, for the single-screw tensioner, we're just looking at the diameter of
-% % the screw which needs to be subtracted from spring. We have M3 screws.
-% % If need more precision later: include thickness of spring wire.
-% tensioner_single_length = 0.003;
-% 
-% % For the single-screw tensioner, the spring tip is its center, 
-% % adding an extra few mm from its center to edge. Measured roughly (cm -> m)
-% % TO-DO: adjust this more if we get noisy data. Account for screw diameter,
-% % use that instead, since the cable is really looped around the screw, then
-% % also in addition account for the offset from center (edge??) of spring
-% % loop.
-% % adjuster_length = 0.36 * 0.01;
-% % tensioner_single_length = 0.36 * 0.01;
-% 
-% % For the double-screw tensioner, 
-% % center-to-center of the two screws SHOULD be 9mm, but Drew measured 1 cm.
-% % minus the radius of the screw on each side equals a full diameter (3mm), 
-% % so inside-edge of screw to inside-edge is
-% tensioner_double_length = 0.007;
-% 
-% %initial_lengths = [l_init_4; l_init_4; l_init_8; l_init_4];
-% 
-% % The "initial lengths" here are then total distance from node center to
-% % connection point of cable.
-% % Cables 1 and 2 (top and bottom) use the 4 lb/in springs, and cables 3 and
-% % 4 (saddles) use the 25 lb/in spring.
-% % Also, 1,2 use double extenders, 3,4 use single extenders.
-% initial_lengths = [l_init_4 + extender_length + tensioner_double_length; 
-%                    l_init_4 + extender_length + tensioner_double_length; 
-%                    l_init_25 + extender_length + tensioner_single_length;
-%                    l_init_25 + extender_length + tensioner_single_length];
-% 
-% % So, the total length to subtract from the rest length is
-% % init_len_offset = initial_lengths + extender_length;
-% % ...now included in "initial_lengths."
-% init_len_offset = initial_lengths;
+% Some dimensions of the springs.
+% We need to check for collisions / add this to the formulation as a
+% constraint.
+
+% The following are all in meters.
+
+% The initial lengths of each of the springs used, from the manufactuter,
+% listed here according to their spring constants.
+% NOTE that this is TIP-TO-TIP: put the whole spring in the calipers and
+% you get this number. This is *NOT* center to center.
+l_init_8 = 1 * 2.54 * 0.01;
+l_init_4 = 1 * 2.54 * 0.01;
+l_init_25 = 0.75 * 2.54 * 0.01;
+
+% The spring extender length (which is added to spring initial length) is 
+% 1 inch CENTER TO CENTER of the loops, but the spring hooks to the end of 
+% the outer loop, and it's 0.13 inch from center to inside of the
+% extender's hook, so total from node (center on one end) to spring tip is
+% 1.13 inch. HOWEVER, since the spring is curved, the tip doesn't sit
+% exactly at the edge. That extra delta is 1.1 mm (0.0011 m), subtracted
+% away.
+extender_length = 1.13 * 2.54 * 0.01 - (0.0011);
+
+% We also need to account for the screw tensioner mechanism.
+% There are two in use here:
+% one with a single screw point, and 
+% one with two screws (one spring, one cable.)
+
+% For both of these, we'll make the following assumption:
+% Screw is held against edge of spring hook,
+% cable is tightened against screw from the other side.
+% So, for the single-screw tensioner, we're just looking at the diameter of
+% the screw which needs to be subtracted from spring. We have M3 screws.
+% If need more precision later: include thickness of spring wire.
+tensioner_single_length = 0.003;
+
+% For the single-screw tensioner, the spring tip is its center, 
+% adding an extra few mm from its center to edge. Measured roughly (cm -> m)
+% TO-DO: adjust this more if we get noisy data. Account for screw diameter,
+% use that instead, since the cable is really looped around the screw, then
+% also in addition account for the offset from center (edge??) of spring
+% loop.
+% adjuster_length = 0.36 * 0.01;
+% tensioner_single_length = 0.36 * 0.01;
+
+% For the double-screw tensioner, 
+% center-to-center of the two screws SHOULD be 9mm, but Drew measured 1 cm.
+% minus the radius of the screw on each side equals a full diameter (3mm), 
+% so inside-edge of screw to inside-edge is
+tensioner_double_length = 0.007;
+
+%initial_lengths = [l_init_4; l_init_4; l_init_8; l_init_4];
+
+% The "initial lengths" here are then total distance from node center to
+% connection point of cable.
+% Cables 1 and 2 (top and bottom) use the 4 lb/in springs, and cables 3 and
+% 4 (saddles) use the 25 lb/in spring.
+% Also, 1,2 use double extenders, 3,4 use single extenders.
+initial_lengths = [l_init_4 + extender_length + tensioner_double_length; 
+                   l_init_4 + extender_length + tensioner_double_length; 
+                   l_init_25 + extender_length + tensioner_single_length;
+                   l_init_25 + extender_length + tensioner_single_length];
+
+% So, the total length to subtract from the rest length is
+% init_len_offset = initial_lengths + extender_length;
+% ...now included in "initial_lengths."
+init_len_offset = initial_lengths;
 
 %% Anchors and pins
 
@@ -621,19 +621,34 @@ ylabel('4 (N)');
 
 % save in a vector
 u_opt = zeros(s, num_points);
+available_length = zeros(s, num_points);
+
 % it's more intuitive to iterate for now. At least, we can iterate over
 % cables and not over timesteps.
 for k=1:s
     % For cable k, divide the row in f_opt by kappa(k)
+    u_opt(k, :) = lengths(k,:) - (f_opt(k,:) ./ kappa(k));
     % But, now include the length offset term. Accounts for the initial
-    % spring length, as well as the little extender we had to use.
-    %u_opt(k, :) = lengths(k,:) - init_len_offset(k) - (f_opt(k,:) ./ kappa(k));
-%     u_opt(k, :) = lengths(k,:) - (f_opt(k,:) ./ kappa(k));
+    % spring length, as well as the little extender we had to use.    
+    % 2019-05-14: UNSURE if the following has any physical meaning?
+%     u_opt_adj(k, :) = lengths(k,:) - init_len_offset(k) - (f_opt(k,:) ./ kappa(k));
+    % Instead, collisions occur when u_opt - init_len_off < u_min.
+    available_length(k,:) = u_opt(k,:) - init_len_offset(k);
     
     % ^ 2019-05-13: It's not useful to talk in terms of rest length for our
     % problem. By doing "adjusted stretch" below, we don't end up needing
     % ANY of the "initial_length" offset stuff!
 end
+
+% Check to confirm that these satisfy the desired input constraint.
+% A better way to do this would be to set u_min(k) to init_len_offset(k) +
+% some small number, since it's not really not u > 0, there's the not-cable
+% part of the length that can't be spooled past the anchors.
+
+% Does the cable get smaller than u_min?
+disp('Cable collisions: 0 = none, 1 = length shorter than min + offset');
+available_length < u_min
+
 
 % For use with the hardware example, it's easier to instead define a
 % control input that's the amount of "stretch" a cable experiences.
