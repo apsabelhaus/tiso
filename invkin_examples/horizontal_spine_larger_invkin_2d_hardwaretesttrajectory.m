@@ -40,8 +40,15 @@ end
 
 % minimum cable force density
 %q_min = 0; % units of N/m, depending on m and g
-q_min = 0.5;
+% q_min = 0.5;
+q_min = 1.5;
 %q_min = 0.1;
+
+% minimum rest length. Some small constant. In meters.
+% u_min = 0.001; 
+% u_min = 0.2; % This one fails!
+% u_min = 0.1; % 10cm.
+u_min = 0.05; % 5cm.
 
 % Local frames. We're going to use the get_node_coordinates script for both
 % "vertebrae", but with the "fixed" one having a different frame to account
@@ -204,15 +211,18 @@ m(4) = m_i;
 % conversion is 
 lbin_in_nm = 175.126835;
 kappa_i = 4.79 * lbin_in_nm;
-% ...which happens to be
-%kappa_i = 270;
+
+% vectorized:
 kappa = ones(s,1) * kappa_i;
+
 % On 2018-12-6, we changed cable 3 and 4 to have a higher spring constant, so it
 % has less extension, since we were running into hardware limitations.
 %kappa(3) = 8.61 * lbin_in_nm;
+
 % with the 25 lb/in spring:
 kappa(3) = 25.4 * lbin_in_nm;
 kappa(4) = 25.4 * lbin_in_nm;
+
 %kappa(4) = 8.61 * lbin_in_nm;
 
 %% Unused spring initial length calculations
@@ -556,8 +566,11 @@ for i=1:num_points
         disp(num2str(i));
     end
     % quadprog is inside this function.
-    [f_opt(:,i), q_opt(:,i), lengths(:,i), Ab_i, pb_i] = invkin_core_2d_rb(x(:,i), ...
-        y(:,i), px(:,i), py(:,i), w, C, s, b, q_min, debugging);
+%     [f_opt(:,i), q_opt(:,i), lengths(:,i), Ab_i, pb_i] = invkin_core_2d_rb(x(:,i), ...
+%         y(:,i), px(:,i), py(:,i), w, C, s, b, q_min, debugging);
+    % Now, with input saturation constraint:
+    [f_opt(:,i), q_opt(:,i), lengths(:,i), Ab_i, pb_i] = invkin_core_2d_rb_sat(x(:,i), ...
+        y(:,i), px(:,i), py(:,i), w, C, s, b, q_min, kappa, u_min, debugging);
     % and insert this Ab and pb.
     Ab{end+1} = Ab_i;
     pb{end+1} = pb_i;

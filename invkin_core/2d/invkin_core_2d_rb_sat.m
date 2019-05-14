@@ -1,11 +1,16 @@
-%% invkin_core_2d_rb.m
+%% invkin_core_2d_rb_sat.m
 % Copyright Andrew P. Sabelhaus 2018
 
-function [f_opt, q_opt, lengths, Ab, pb] = invkin_core_2d_rb(x, y, px, py, w, C, s, b, q_min, debugging)
-% invkin_core_2d_rb performs a single inverse kinematics computation for a
+function [f_opt, q_opt, lengths, Ab, pb] = invkin_core_2d_rb_sat(x, y, px, py, w, C, s, b, q_min, kappa, u_min, debugging)
+% invkin_core_2d_rb_sat performs a single inverse kinematics computation for a
 % 2-dimensional tensegrity structure (robot), using the reformulated
 % problem treating the rigid bodies with a force/moment balance and not as
 % a node-graph.
+%
+% The "sat" is input saturation constraint: given the spring constants of
+% the cables (linear springs), the rest lengths must be greater than u_min.
+% This is transformed into a constraint on q, so that rest lengths (u) are
+% not dealt with directly.
 %
 %   *IMPORANT:* This script currently only is valid under the following
 %   conditions:
@@ -29,13 +34,13 @@ function [f_opt, q_opt, lengths, Ab, pb] = invkin_core_2d_rb(x, y, px, py, w, C,
 %
 % Inputs:
 %   x, y = the x, and y positions of each node in the structure. Must
-%   be the same dimension. Cartesian frame.
+%   be the same dimensionm, \in \mathbb{R}^n. Cartesian frame.
 %       Note, in two dimensions, y is "up" e.g. gravity works in -y.
 %       This is so that a right-handed coordinate frame still makes sense
 %       in 2D.
 %
 %   px, py = vectors of external forces, applied to each node (has the same
-%   dimension as x, y.)
+%   dimension as x, y, i.e. \in \mathbb{R}^n.)
 %
 %   w = anchoring vector. Elements = 1 if node should be kept, = 0 if node
 %   is an anchor and should be thrown out of the force balance. Size is n.
@@ -52,7 +57,15 @@ function [f_opt, q_opt, lengths, Ab, pb] = invkin_core_2d_rb(x, y, px, py, w, C,
 %   for now, it's easier to just have the caller specify. (Robot designers
 %   will know this intuitively: e.g., we've made a robot with 2 vertebrae.)
 %
-%   q_min = minimum force density for an individual compression member. 
+%   q_min = minimum force density for an individual cable.
+%       Scalar, \in \mathbb{R}^+.
+%
+%   kappa = vector of spring constants for each cable, must be \in
+%       \mathbb{R}^s. Units should be corresponding to lengths (x,y) and
+%       force (px, py.)
+%
+%   u_min = minimum cable rest length for an individual cable. Scalar, \in
+%       \mathbb{R}^+.
 %
 %   debugging = level of debugging/verbosity from this script. Options:
 %       0 = no output except for errors
@@ -287,6 +300,37 @@ Am = K_m * W * Am * H_hat';
 Ab = [Af; Am];
 pb = [pf; pm];
 
+% For the saturation constraint,
+% all the lengths of each cable are:
+dx = H_hat * C * x;
+dz = H_hat * C * y;
+
+% so the lengths of each cable are the euclidean norm of each 2-vector.
+% re-organize:
+D = [dx, dz];
+if debugging >= 2
+    disp('Member length vectors are:');
+    D
+end
+
+% the scalar lengths are then the 2-norm (euclidean) for each column, which
+% is
+lengths = vecnorm(D, 2, 2);
+if debugging >= 2
+    disp('Member lengths (scalar) are:');
+    lengths
+end
+
+% The inequality constraint for the input saturation constraint is
+% \mathbf{L} \mathbf{q} \leq \bm{\kappa}(\boldsymbol{\ell} - \mathbf{u}^{min})
+% so
+Kappa = diag(kappa);
+L = diag(lengths);
+u_min_vector = u_min * ones(s,1);
+% so the righthandside becomes
+b_ineq_sat = Kappa * (lengths - u_min_vector);
+
+% Debugging info for the parameters:
 if debugging >= 2
     disp('Size of x, r, C, Ab, pb is:');
     n
@@ -297,11 +341,15 @@ if debugging >= 2
     disp('Values of Ab and pb are:');
     Ab
     pb
+    Kappa
+    disp('For the input saturation constraint:');
+    L
+    b_ineq_sat
 end
 
 % Since we assume that the first s rows of C are for the cables, make the
 % constraint for the min force density on those cables:
-q_min_vector = q_min * [ones(s,1)];
+q_min_vector = q_min * ones(s,1);
 
 %% Solve the optimization problem
 
@@ -330,8 +378,18 @@ f = [];
 
 % the inequality constraints are in the form of A_ineq * q <= b_ineq,
 % so we need q >= mintensionvec becomes -q <= -mintensionvec
-A_ineq = - eye(s);
-b_ineq = - q_min_vector;
+% Combined with the input saturation constraint, this becomes
+% [L, 0; 0, -eye(s)] q \leq [b_ineq_sat; -q_min_vector]
+% Should get A_ineq \in \mathbb{R}^{2s x 2s}, b_ineq \in \mathbb{R}^2s
+
+% A_ineq = - eye(s);
+% b_ineq = - q_min_vector;
+
+A_ineq = [L;
+          -eye(s)];
+
+b_ineq = [ b_ineq_sat;
+          -q_min_vector];
 
 % equality constraints are A q = p
 A_eq = Ab;
@@ -343,6 +401,8 @@ if debugging >= 2
     f
     A_eq
     b_eq
+    A_ineq
+    b_ineq
 end
 
 % TO-DO: sanitize here? Maybe zero-out anything that hits numberical
@@ -394,26 +454,6 @@ end
 % % direction are
 % dx = C * x;
 % dz = C * z;
-
-% all the lengths of each cable are:
-dx = H_hat * C * x;
-dz = H_hat * C * y;
-
-% so the lengths of each cable are the euclidean norm of each 2-vector.
-% re-organize:
-D = [dx, dz];
-if debugging >= 2
-    disp('Member length vectors are:');
-    D
-end
-
-% the scalar lengths are then the 2-norm (euclidean) for each column, which
-% is
-lengths = vecnorm(D, 2, 2);
-if debugging >= 2
-    disp('Member lengths (scalar) are:');
-    lengths
-end
 
 % Then, calculate the optimal forces. (results should be same dim as
 % q_opt.)

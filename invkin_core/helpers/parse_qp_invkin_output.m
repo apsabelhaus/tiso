@@ -49,6 +49,7 @@ switch exitflag
         disp('Set verbosity level higher for more information.');
         disp('Set a lower minimum tension, c.');
         disp('Examine output for dimensionality and rank of equilibrium matrix.');
+        disp('Increase spring constants to give a wider range for input saturation constraint.');
         disp(' ');
         error('Inverse Kinematics calculation failed, now exiting.');
         
