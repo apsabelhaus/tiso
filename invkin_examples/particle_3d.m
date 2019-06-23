@@ -112,5 +112,20 @@ z = nodes(3, :)';
 disp('Equilibrium inputs are:');
 bar_v = lengths - (f_opt ./ k)
 
+% Let's also calculate the acceptable range of control gains.
+% From Drew's dissertation, this range is 
+% 1 > kappa > v/ell > 0
+disp('Ratio \bar v / \bar \ell is:');
+min_kappa = bar_v ./ lengths
+
+
+
+
+
+
+
+
+
+
 
 
