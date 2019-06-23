@@ -1,7 +1,7 @@
 %% rbISO_2d.m
 % Copyright Andrew P. Sabelhaus 2019
 
-function [fOpt, qOpt, lengths, Ab, pb] = rbISO_2d(x, y, px, py, w, C, s, b, qMin, debugging)
+function [fOpt, qOpt, lengths, Ab, pb] = rbISO_2d(x, y, px, py, w, C, R, s, b, qMin, debugging)
 %% rbISO_2d  
 % rbISO_2d performs an inverse statics optimziation for a single pose of a
 % 2-dimensional tensegrity structure (robot), using the reformulated
@@ -41,6 +41,10 @@ function [fOpt, qOpt, lengths, Ab, pb] = rbISO_2d(x, y, px, py, w, C, s, b, qMin
 %
 %   C = configuration matrix for the structure. See literature for
 %   definition.
+%
+%   R = weighting matrix for the optimization problem. Use helper functions
+%   to choose it (either 2-norm of force densities, or if spring constants
+%   available, total potential energy in the cables.)
 %
 %   s = number of cables (tension-only members in the system.) This is
 %   required to pose the optimization program such that no cables "push."
@@ -167,10 +171,14 @@ d = 2;
 %       origin (easier than CoM and still valid.)
 
 % Helper matrix:
-H_hat = [eye(s), zeros(s, r)];
-% ...when multiplied by a vector of all cables, removes the bars.
-% Equivalently, H_hat^\top will right-multiply the A matrices to remove the
-% bars.
+
+% H_hat = [eye(s), zeros(s, r)];
+H = [eye(s);
+     zeros(r, s)];
+ 
+% ...when multiplied by a vector of all cables, removes the bars:
+% q_s = H^\top q.
+% Equivalently, H will right-multiply the A matrices to remove the bars.
 
 
 % A matrix to pattern out the collapsation.
@@ -204,7 +212,8 @@ Aw = Wf * A;
   
 % The Af matrix can then be collapsed to size (2b x s) from size (2n x
 % (s+r))
-Af = K * Aw * H_hat'; 
+Af = K * Aw * H; 
+% Af = K * Aw * H_hat'; 
 % Af = K * A * H_hat';
 
 % We can do a quick check: if any individual column is zero, that means
@@ -276,7 +285,8 @@ Am = B * A;
 
 % Then remove the bars, and collapse it down to one moment balance.
 % This leaves a matrix of size b x s.
-Am = Km * W * Am * H_hat';
+% Am = Km * W * Am * H_hat';
+Am = Km * W * Am * H;
 
 % finally, can concatenate the force balance with the moment balance.
 Ab = [Af; Am];
@@ -308,17 +318,13 @@ if debugging >= 2
 end
 
 % quadprog's arguments are
-% 0.5 * H (quadratic term), f (linear term), A_ineq, b_ineq, A_eq, b_eq
+% 0.5 * R (quadratic term), f (linear term), A_ineq, b_ineq, A_eq, b_eq
 
 % Our problem is
-% min qs'qs s.t. Ab*qs=pb, q - mintensionvec \geq 0
+% min qs'*R*qs s.t. Ab*qs=pb, q - mintensionvec \geq 0
 
-% no weighting any members different than others
-% the 2 is unnecessary here since we only care about argmax
-%H = 2 * eye(s + r);
-
-% Our H is only in s x s now
-H = eye(s);
+% Our R is only in s x s now
+%R = eye(s);
 
 % no linear term
 f = [];
@@ -334,8 +340,8 @@ b_eq = pb;
 
 if debugging >= 2
     disp('Optimization parameters are:');
-    H
-    f
+    A_ineq  
+    b_ineq
     A_eq
     b_eq
 end
@@ -356,7 +362,7 @@ end
 
 % Call quadprog
 % THE BIG STEP!
-[qOpt, ~, exitFlag, outputInfo] = quadprog(H, f, A_ineq, b_ineq, A_eq, ...
+[qOpt, ~, exitFlag, outputInfo] = quadprog(R, f, A_ineq, b_ineq, A_eq, ...
                                        b_eq, [], [], [], qpOptions);
 
 % Call our parser to make some sense of out what happened
@@ -390,25 +396,29 @@ end
 % dx = C * x;
 % dz = C * z;
 
-% all the lengths of each cable are:
-dx = H_hat * C * x;
-dz = H_hat * C * y;
+% % all the lengths of each cable are:
+% % dx = H_hat * C * x;
+% % dz = H_hat * C * y;
+% dx = H' * C * x;
+% dz = H' * C * y;
+% 
+% % so the lengths of each cable are the euclidean norm of each 2-vector.
+% % re-organize:
+% D = [dx, dz];
+% if debugging >= 2
+%     disp('Member length vectors are:');
+%     D
+% end
+% 
+% % the scalar lengths are then the 2-norm (euclidean) for each column, which
+% % is
+% lengths = vecnorm(D, 2, 2);
+% if debugging >= 2
+%     disp('Member lengths (scalar) are:');
+%     lengths
+% end
 
-% so the lengths of each cable are the euclidean norm of each 2-vector.
-% re-organize:
-D = [dx, dz];
-if debugging >= 2
-    disp('Member length vectors are:');
-    D
-end
-
-% the scalar lengths are then the 2-norm (euclidean) for each column, which
-% is
-lengths = vecnorm(D, 2, 2);
-if debugging >= 2
-    disp('Member lengths (scalar) are:');
-    lengths
-end
+lengths = getLen_2d(x, y, H, C);
 
 % Then, calculate the optimal forces. (results should be same dim as
 % qOpt.)

@@ -214,11 +214,14 @@ y = coord(2, :)';
 % needed, since py and m are \in R^n.
 py = py + -m*g;
 
+% The objective function weighting matrix, via the helper(s).
+% For 0.5 q_s'*R*q_s
+R = getObj_2norm(s);
 
 %% Solve the inverse statics problem
 
 % Solve. Rigid body reformulation, two dimensions.
-[fOpt, qOpt, Ab, pb] = rbISO_2d(x, y, px, py, w, C, s, b, qMin, debugging);
+[fOpt, qOpt, Ab, pb] = rbISO_2d(x, y, px, py, w, C, R, s, b, qMin, debugging);
 
 % Seems correct, intuitively!
 % Cable 1 is horizontal, below.

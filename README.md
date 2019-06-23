@@ -1,5 +1,5 @@
 # tiso
-tiso (Tensegrity Inverse Statics Optimization) is collection of libraries and functions that solve inverse statics problems for tensegrity structures and robots.
+tiso (Tensegrity Inverse Statics Optimization), pronounced 'tea-sew', is collection of libraries and functions that solve inverse statics problems for tensegrity structures and robots.
 
 NOTE that this repository is under active development and is NOT ready to use. The software has yet to be verified for most cases.
 
