@@ -1,26 +1,26 @@
-% parse_qp_invkin_output.m
+% parseISOresult.m
 % Copyright Andrew Sabelhaus and Berkeley Emergent Space Tensegrities
-% Lab, 2018
+% Lab, 2019
 
-function parse_qp_invkin_output(exitflag, output_info)
-% parse_qp_invkin_output
+function parseISOresult(exitFlag, outputInfo)
+% parseISOresult
 %   A parser for the output of quadprog, interpreting it in the context of
-%   the inverse kinematics problem for tensegrity robots.
+%   the inverse statics optimization program result.
 %   This makes it easier than trying to interpret qp's output natively.
 %
 %   Inputs:
-%       exitflag = exit flag returned by quadprog
-%       output_info = the 'output' struct returned by quadprog
+%       exitFlag = exit flag returned by quadprog
+%       outputInfo = the 'output' struct returned by quadprog
 %
 %   Outputs:
 %       none. The function does not return anything, but instead writes to
 %       the command prompt.
 %
 
-disp('Inverse Kinematics Result:');
+disp('Inverse Statics Optimization Result:');
 
 % Switch on the exit flag so we can interpret results
-switch exitflag
+switch exitFlag
     
     case 1
         disp('Result found, valid solution returned.');
@@ -35,7 +35,7 @@ switch exitflag
         disp(' ');
         disp('Alternatively - may be a numerical issue, so you may try manually setting the options for quadprog to a higher number of iterations if desired.');
         disp('Number of iterations were:');
-        disp(output_info.iterations);
+        disp(outputInfo.iterations);
         
     case -2
         disp(' ');
@@ -51,7 +51,7 @@ switch exitflag
         disp('Examine output for dimensionality and rank of equilibrium matrix.');
         disp('Increase spring constants to give a wider range for input saturation constraint.');
         disp(' ');
-        error('Inverse Kinematics calculation failed, now exiting.');
+        error('Inverse Statics Optimization calculation failed, now exiting.');
         
     otherwise
         disp('Quadprog exit flag not recognized, set to a higher debugging level for more information');

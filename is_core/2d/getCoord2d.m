@@ -1,9 +1,10 @@
-% get_node_coordinates_2d.m
+% getCoord2d.m
 % Copyright Andrew P. Sabelhaus
 
-function [coordinates] = get_node_coordinates_2d(local_frame, state, debugging)
-% get_node_coordinates calculates the coordinates (positions) of each node
-%   for the whole tensegrity structure. For more than 1 rigid body, the
+function [coordinates] = getCoord2d(localFrame, state, debugging)
+% getCoord2d calculates the coordinates (positions) of each node
+%   for the whole tensegrity structure, in two dimensions, given the 
+%   states of each body. For more than 1 rigid body, the
 %   'state' vector implies how many times to copy/translate/rotate the
 %   local frame.
 %   
@@ -12,7 +13,7 @@ function [coordinates] = get_node_coordinates_2d(local_frame, state, debugging)
 %   n_i = number of nodes from rigid body, from size of local_frame
 %
 % Inputs:
-%   local_frame = matrix with all points in a local frame for one body.
+%   localFrame = matrix with all points in a local frame for one body.
 %       Size 2 x n_i (node coordinates are column vectors.)
 %
 %   state = vector, size 3*b where b is the number of rigid bodies.
@@ -29,7 +30,7 @@ function [coordinates] = get_node_coordinates_2d(local_frame, state, debugging)
 
 % The parameters are
 b = size(state,1) / 3;
-n_i = size(local_frame, 2);
+n_i = size(localFrame, 2);
 
 if debugging >= 2
     b
@@ -54,10 +55,10 @@ for i = 1:b
            sin(gamma),   cos(gamma)]; 
        
     % apply the rotation
-    rotated_frame = rot * local_frame;
+    rotatedFrame = rot * localFrame;
     
     if debugging >= 2
-        rotated_frame
+        rotatedFrame
     end
     
     % Put the translations in matrix form for ease. the frame has each
@@ -67,11 +68,11 @@ for i = 1:b
                      state_i(2) * ones(1, n_i)];
         
     % The new frame is then translated also.
-    rot_trans_frame = rotated_frame + translations;
+    rotTransFrame = rotatedFrame + translations;
     % Finally, insert this into the coordinates matrix.
     % columns indexing is by rigid body, in order. E.g., with 4 points in a
     % local frame and 2 rigid bodies, these should be blocks 1-4 and 5-8.
-    coordinates(:, n_i*(i-1) + 1 : n_i*i) = rot_trans_frame;
+    coordinates(:, n_i*(i-1) + 1 : n_i*i) = rotTransFrame;
 end
 
 end

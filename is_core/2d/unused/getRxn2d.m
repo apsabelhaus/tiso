@@ -1,9 +1,15 @@
-% get_reaction_forces_2d.m
+% getRxn2d.m
 % Copyright Andrew P. Sabelhaus 2018
 
-function [px, py] = get_reaction_forces_2d(x, y, pinned, m, g, debugging)
-% get_reaction_forces calculates the external reaction forces on a
-% tensegrity structure under the influence of gravity.
+function [px, py] = getRxn2d(x, y, pinned, m, g, debugging)
+% getRxn2d calculates the external reaction forces on a
+% tensegrity structure under the influence of gravit, in two dimensions.
+%
+%   ****** NOTE: this function is unused and may still contain bugs. Do not
+%           use unless you have vetted it yourself.
+%
+%   ****** The style in this file has NOT been standardized with the rest
+%           of the library. Please excuse the temporary awkwardness.
 %
 % This function makes a variety of assumptions about the tensegrity in
 % question and its problem setup. Do not use it unless you've ensured those
