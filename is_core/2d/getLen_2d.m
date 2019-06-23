@@ -1,6 +1,6 @@
 % Andrew P. Sabelhaus 2019
 
-function len = getLen_2d(x, y, H, C)
+function len = getLen_2d(x, y, s, C)
 %% getLen_2d
 %   getLen_2d calculates the lengths of the cables within a structure, for
 %   a two-dimensional problem.
@@ -8,7 +8,8 @@ function len = getLen_2d(x, y, H, C)
 %   Inputs:
 %       x, y = nodal coordinates for the whole structure, \in \mathbb{R}^n
 %
-%       H = bar removal matrix (see get_H), \in \mathbb{R}^{(s+r) x s}.
+%       s = number of cables. Used to create the H matrix that removes the
+%       bars from these calculations.
 %
 %       C = connectivity matrix (also called incidence matrix), \in
 %       \mathbb{R}^{(s+r) x n}. See paper for detailed description.
@@ -19,9 +20,8 @@ function len = getLen_2d(x, y, H, C)
 
 
 % validation:
-
 % The number of nodes, according to the C matrix, is its number of columns:
-n = size(C,2);
+n = size(C, 2);
 % Verify that this is also the length of all other nodal vectors.
 if n ~= size(x, 1)
     error('Error: the C matrix and the x vector (node positions in x) have a different number of nodes. Cannot continue.');
@@ -32,6 +32,19 @@ elseif size(x, 2) ~= 1
 elseif size(y, 2) ~= 1
     error('Error: z is not a column vector. Cannot continue.');
 end
+
+% validate: s should be a scalar
+if ~isscalar(s)
+    error('Error: getObj_2norm expected a scalar number of cables s, but s is not scalar.');
+end
+
+% The number of total members is the rows of C
+m = size(C, 1);
+% the number of bars and number of cables have to add up to total members
+r = m - s;
+
+% then the H matrix for bar removals can be generated
+H = get_H(s, r);
 
 % the component-wise signed lengths of each cable are
 dx = H' * C * x;

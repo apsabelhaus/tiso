@@ -180,6 +180,8 @@ H = [eye(s);
 % q_s = H^\top q.
 % Equivalently, H will right-multiply the A matrices to remove the bars.
 
+% For later, calculate the lengths.
+lengths = getLen_2d(x, y, s, C);
 
 % A matrix to pattern out the collapsation.
 % We could do ones(1, eta) but all Drew's papers use the 'ones' as a column
@@ -360,6 +362,8 @@ if debugging >= 2
     qpOptions.Display = 'final';
 end
 
+R
+
 % Call quadprog
 % THE BIG STEP!
 [qOpt, ~, exitFlag, outputInfo] = quadprog(R, f, A_ineq, b_ineq, A_eq, ...
@@ -390,35 +394,6 @@ end
 
 
 %% Calculate the cable forces from the force densities.
-
-% % Forces are density * length, and lengths for each member in each
-% % direction are
-% dx = C * x;
-% dz = C * z;
-
-% % all the lengths of each cable are:
-% % dx = H_hat * C * x;
-% % dz = H_hat * C * y;
-% dx = H' * C * x;
-% dz = H' * C * y;
-% 
-% % so the lengths of each cable are the euclidean norm of each 2-vector.
-% % re-organize:
-% D = [dx, dz];
-% if debugging >= 2
-%     disp('Member length vectors are:');
-%     D
-% end
-% 
-% % the scalar lengths are then the 2-norm (euclidean) for each column, which
-% % is
-% lengths = vecnorm(D, 2, 2);
-% if debugging >= 2
-%     disp('Member lengths (scalar) are:');
-%     lengths
-% end
-
-lengths = getLen_2d(x, y, H, C);
 
 % Then, calculate the optimal forces. (results should be same dim as
 % qOpt.)

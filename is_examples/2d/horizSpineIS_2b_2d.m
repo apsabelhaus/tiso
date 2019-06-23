@@ -216,7 +216,18 @@ py = py + -m*g;
 
 % The objective function weighting matrix, via the helper(s).
 % For 0.5 q_s'*R*q_s
-R = getObj_2norm(s);
+% R = getObj_2norm(s);
+
+% For the potential energy objective function,
+lengths = getLen_2d(x, y, s, C);
+% need to declare some spring constants
+lbin_in_nm = 175.126835;
+kappa_i = 4.79 * lbin_in_nm;
+% vectorized:
+kappa = ones(s,1) * kappa_i;
+
+% so the objective function weight is
+R = getObj_PE(s, lengths, kappa);
 
 %% Solve the inverse statics problem
 
