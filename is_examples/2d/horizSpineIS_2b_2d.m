@@ -1,14 +1,14 @@
-%% horizontal_spine_invkin_2d.m
-% Copyright Andrew P. Sabelhaus 2018
+%% horizSpineIS_2b_2d.m
+% Copyright Andrew P. Sabelhaus 2019
 
-% This script used the tInvKin libraries to calculate the inverse
-% kinematics for a tensegrity spine, defined in 2 dimensions. 
+% This script used the tiso libraries to solve the inverse statics problem
+% for a two body (b=2) tensegrity spine, defined in 2 dimensions. 
 % As the term is used here, 'spine'
 % refers to a structure with repeated rigid bodies of the same geometry and
 % mass.
 
 % As of 2018-08-16, this scrupt (needs to) use the rigid body reformulation
-% of the inverse kinematics problem. And, that reformulation currently has
+% of the inverse statics problem. And, that reformulation currently has
 % stringent constraints on when it can be used - right now, only with 2
 % rigid bodies.
 % As of 2018-11-12: script 'might' now work for b > 2, we've
@@ -20,10 +20,12 @@ clear all;
 close all;
 clc;
 
-% add the core libraries, assumed to be in an adjacent folder.
-addpath( genpath('../invkin_core') );
-% same for the plotting.
-addpath( genpath('../invkin_plotting') );
+% add the core libraries
+addpath( genpath('../../is_core/2d') );
+% and the helper functions
+addpath( genpath('../../is_core/helper') );
+% same for the plotting
+addpath( genpath('../../is_plot/2d') );
 
 %% Set up the parameters
 
@@ -35,12 +37,12 @@ debugging = 1;
 
 % If appropriate, output a starting message.
 if debugging >= 1
-    disp('Starting horizontal spine 2d rigid body inverse kinematics example...');
+    disp('Starting horizontal spine 2d rigid body inverse statics example...');
 end
 
 % minimum cable force density
-%q_min = 0; % units of N/m, depending on m and g
-q_min = 0.5;
+%qMin = 0; % units of N/m, depending on m and g
+qMin = 0.5;
 
 % Local frame for one rigid body (locations of nodes)
 
@@ -48,23 +50,26 @@ q_min = 0.5;
 % spine. Nodes are column vectors [x; z], but for ease, written as transposed
 % here.
 
-%bar_endpoint = 0.5; % meters. 50 cm.
+%barEndpoint = 0.5; % meters. 50 cm.
 
 % For the 2D spine control test, fall 2018, the dimensions of the vertebra
 % are as follows:
-% bar_endpoint = 4 inches
+% barEndpoint = 4 inches
 % that's 4 * 2.54 * 0.01 = 0.1016 meters
-bar_endpoint = 0.1016;
+barEndpoint = 0.1016;
 
+% local frame of nodes
 a = [   0,              0;
-        bar_endpoint,   -bar_endpoint;
-        -bar_endpoint,  -bar_endpoint;
-        0,              bar_endpoint]';
+        barEndpoint,   -barEndpoint;
+        -barEndpoint,  -barEndpoint;
+        0,              barEndpoint]';
     
 
 % (e.g., vertebra is in an 8x8 inch box.)
+
+% Mass of a single vertebra
 % Mass as measured with a scale on 2018-11-18 is about 500g
-m_i = 0.495;
+mBody = 0.495;
     
 if debugging >= 2
     a
@@ -75,13 +80,13 @@ b = 2;
 % When removing the anchor nodes, it's like removing one of the bodies:
 % b = 1;
 
-% Configuration matrix for WHOLE STRUCTURE. (in future, pattern out.)
+% Configuration matrix for WHOLE STRUCTURE.
 
-% Full connectivity matrix
 % Rows 1-4 are cables
 % Rows 5-10 are bars
-% Columns 1-4 are bottom tetra nodes
-% Columns 5-8 are top tetra nodes
+% Columns 1-4 are bottom vertebra nodes
+% Columns 5-8 are top vertebra nodes
+
 %    1  2  3  4  5  6  7  8  
 C = [0  1  0  0  0 -1  0  0;  %  1, cable 1
      0  0  1  0  0  0 -1  0;  %  2, ...
@@ -110,20 +115,12 @@ end
 % gravitational constant
 g = 9.81;
 
-% mass per vertebra
-% let's say each vertebra weighs 0.8 kg. Thta's about 1.7 lbs, which seems
-% right to Drew if motors are included.
-%m_i = 0.8;
-% 2018-11-28: updated above alongside the dimensions for the hardware test
-% of fall 2018.
-
-% Note here that I've used m_i as per-body not per-node.
-% Probably accidentally changed notation w.r.t. T-CST 2018 paper.
+% mass per nodes according to vertebra body
 % 4 nodes per body, so
-m_node = m_i/4;
+mNode = mBody/4;
 
 % and in vector form,
-m = ones(n, 1) * m_node;
+m = ones(n, 1) * mNode;
 
 % Example of how to do the 'anchored' analysis.
 % Declare a vector w \in R^n, 
@@ -135,11 +132,15 @@ m = ones(n, 1) * m_node;
 % Including all nodes:
 w = ones(n,1);
 
-% IMPORTANT! If chosing to remove nodes, must change 'b' also, or else inv
-% kin will FAIL.
+% IMPORTANT! If chosing to remove nodes, must change 'b' also, or else the
+% iso optimization problem will FAIL.
 
 % We also need to declare which nodes are pinned (with external reaction
 % forces) and which are not. 
+
+% ******NOTE: this is NOT supported in the version of tiso as of June 2019.
+%       The function for obtaining reaction forces has not been verified.
+
 % We're choosing not to have this be the same as w, since there are some
 % nodes to "ignore" for w which are not necessarily built in to the ground
 % for "pinned". Example, nodes inside the leftmost vertebra, where we're
@@ -173,7 +174,7 @@ xi(3) = -pi/2;
 % To make things interesting, let's rotate it a small bit, too.
 %xi(3) = -pi/2 + pi/16;
 
-xi(4:6) = [     bar_endpoint * (3/2);
+xi(4:6) = [     barEndpoint * (3/2);
                 0;
                -pi/2 + pi/16];
             
@@ -181,32 +182,32 @@ if debugging >= 2
     xi
 end
 
-%% Calculations for the inputs to the core invkin library
+%% Calculations for the inputs to the core tiso library
 
 % The nodal coordinates (x, z)
 % calculate from position trajectory
-coordinates = get_node_coordinates_2d(a, xi, debugging);
+coord = getCoord2d(a, xi, debugging);
 
 if debugging >= 2
-    coordinates
+    coord
 end
 
 % Split up the coordinates.
-% The invkin core routine expects these to be column vectors, so a
+% The tiso core routine expects these to be column vectors, so a
 % transpose is needed also
-x = coordinates(1, :)';
-y = coordinates(2, :)';
+x = coord(1, :)';
+y = coord(2, :)';
 
 % Reaction forces can be calculated by this helper, which assumes that only
 % gravity is present as an external force.
-[px, py] = get_reaction_forces_2d(x, y, pinned, m, g, debugging);
+[px, py] = getRxn2d(x, y, pinned, m, g, debugging);
 
 % for more details, you can look at commits to the library before Nov. 2018
 % where this reaction force/moment balance was written out by hand.
 
 % Since this was just a calculation of the reaction forces, we ALSO need to
 % add in the external forces themselves (grav forces) for use as the whole
-% inverse kinematics problem.
+% inverse statics problem.
 
 % Add the gravitational reaction forces for each mass.
 % a slight abuse of MATLAB's notation: this is vector addition, no indices
@@ -214,10 +215,10 @@ y = coordinates(2, :)';
 py = py + -m*g;
 
 
-%% Solve the inverse kinematics problem
+%% Solve the inverse statics problem
 
-% Solve
-[f_opt, q_opt, Ab, pb] = invkin_core_2d_rb(x, y, px, py, w, C, s, b, q_min, debugging);
+% Solve. Rigid body reformulation, two dimensions.
+[fOpt, qOpt, Ab, pb] = rbISO_2d(x, y, px, py, w, C, s, b, qMin, debugging);
 
 % Seems correct, intuitively!
 % Cable 1 is horizontal, below.
@@ -254,7 +255,7 @@ py = py + -m*g;
 radius = 0.01;
 
 % Plot.
-plot_2d_tensegrity_invkin(C, x, y, s, radius);
+plotTensegrity2d(C, x, y, s, radius);
 
 
 

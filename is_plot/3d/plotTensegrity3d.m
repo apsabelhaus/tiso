@@ -1,4 +1,11 @@
-function plot = plot_3d_tensegrity_invkin(C,s,W,x,y,z)
+function plot = plotTensegrity3d(C,s,W,x,y,z)
+%% plotTensegrity3d
+%
+%   TO-DO: update and document this function like the 2d version.
+%
+%
+
+
     % Retrieving Parameters
     [m,n] = size(C);
     

@@ -1,17 +1,16 @@
-%% invkin_core_2d_rb.m
-% Copyright Andrew P. Sabelhaus 2018
+%% rbISO_2d.m
+% Copyright Andrew P. Sabelhaus 2019
 
-function [f_opt, q_opt, lengths, Ab, pb] = invkin_core_2d_rb(x, y, px, py, w, C, s, b, q_min, debugging)
-% invkin_core_2d_rb performs a single inverse kinematics computation for a
+function [fOpt, qOpt, lengths, Ab, pb] = rbISO_2d(x, y, px, py, w, C, s, b, qMin, debugging)
+%% rbISO_2d  
+% rbISO_2d performs an inverse statics optimziation for a single pose of a
 % 2-dimensional tensegrity structure (robot), using the reformulated
-% problem treating the rigid bodies with a force/moment balance and not as
-% a node-graph.
+% rigid body (rb) force/moment balance.
 %
 %   *IMPORANT:* This script currently only is valid under the following
 %   conditions:
 %
-%   d = 2 (this is a 2d script anyway!)
-%   Each rigid body has the same structure (specifically, same number of nodes)
+%   Each rigid body has the same number of nodes
 %
 % This script follows the force density method for tension networks, which
 % calculates a condition for static equilibrium given a specific
@@ -52,7 +51,7 @@ function [f_opt, q_opt, lengths, Ab, pb] = invkin_core_2d_rb(x, y, px, py, w, C,
 %   for now, it's easier to just have the caller specify. (Robot designers
 %   will know this intuitively: e.g., we've made a robot with 2 vertebrae.)
 %
-%   q_min = minimum force density for an individual compression member. 
+%   qMin = minimum force density for an individual compression member. 
 %
 %   debugging = level of debugging/verbosity from this script. Options:
 %       0 = no output except for errors
@@ -60,10 +59,10 @@ function [f_opt, q_opt, lengths, Ab, pb] = invkin_core_2d_rb(x, y, px, py, w, C,
 %       2 = Verbose output, lots of dimensions and matrices and whatnot.
 %
 % Outputs:
-%   f_opt = optimal forces (inv kin soln) for ALL members. First s are
+%   fOpt = optimal forces (inv kin soln) for ALL members. First s are
 %   cables.
 %
-%   q_opt = optimal force densities, corresponding to f_opt
+%   qOpt = optimal force densities, corresponding to fOpt
 %
 %   lengths = lengths of each cable, as specified via C and {x,y}. This
 %       could be calc'd elsewhere since it doesn't actually depend on the
@@ -76,7 +75,7 @@ function [f_opt, q_opt, lengths, Ab, pb] = invkin_core_2d_rb(x, y, px, py, w, C,
 %% Startup message.
 
 if debugging >= 1
-    disp('Starting invkin_core_2d_rb...');
+    disp('Starting rbISO_2d (inverse statics optimization, two dimensions, rigid body reformulation)...');
 end
 
 %% Check if inputs are valid (conformal dimensions of vectors and matrices)
@@ -121,8 +120,8 @@ end
 
 % Minimum cable tension must be positive - otherwise we'd have cables
 % holding compressive loads
-if q_min < 0
-    error('Error: minimum cable tension must be positive, please specify a q_min > 0.');
+if qMin < 0
+    error('Error: minimum cable tension must be positive, please specify a qMin > 0.');
 end
 
 %% First, formulate the constants / parameters for the optimization:
@@ -235,10 +234,6 @@ pw = Wf * p;
 % of per-node.
 pf = K * pw;
 
-% NOTE: As of Nov. 12th, have substituted the general moment balance
-% formulation. This seems to be correct, much more so than the old
-% iterative calculation (which was always suspect.) 
-
 % The moment balance: 
 % We can sum around the origin, and then remove rows similarly to Aw.
 % For example, for the moments due to external forces, we do something
@@ -266,12 +261,12 @@ p_moments = B * p;
 % rows (only summing in Z for each body, not summing and X and Y for each
 % body)
 % It would then be
-K_m = kron(eye(b), ones(eta, 1)');
+Km = kron(eye(b), ones(eta, 1)');
 
 % The moment contribution from external forces should be size b x 1,
 % one sum moment in Z for each rigid body.
 % We also need to remove the anchors, as with the force balance.
-pm = K_m * W * p_moments;
+pm = Km * W * p_moments;
 
 % For the collapsation of the forces on the lefthand side, due to the
 % cables, we perform exactly the same operation. 
@@ -281,7 +276,7 @@ Am = B * A;
 
 % Then remove the bars, and collapse it down to one moment balance.
 % This leaves a matrix of size b x s.
-Am = K_m * W * Am * H_hat';
+Am = Km * W * Am * H_hat';
 
 % finally, can concatenate the force balance with the moment balance.
 Ab = [Af; Am];
@@ -301,7 +296,7 @@ end
 
 % Since we assume that the first s rows of C are for the cables, make the
 % constraint for the min force density on those cables:
-q_min_vector = q_min * [ones(s,1)];
+qMinVec = qMin * [ones(s,1)];
 
 %% Solve the optimization problem
 
@@ -309,7 +304,7 @@ q_min_vector = q_min * [ones(s,1)];
 % constrained to inequality constrained.
 
 if debugging >= 2
-    disp('Solving the inverse kinematics problem for a 2D tensegrity structure...');
+    disp('Solving the inverse statics problem for a 2D tensegrity structure...');
 end
 
 % quadprog's arguments are
@@ -331,7 +326,7 @@ f = [];
 % the inequality constraints are in the form of A_ineq * q <= b_ineq,
 % so we need q >= mintensionvec becomes -q <= -mintensionvec
 A_ineq = - eye(s);
-b_ineq = - q_min_vector;
+b_ineq = - qMinVec;
 
 % equality constraints are A q = p
 A_eq = Ab;
@@ -352,38 +347,38 @@ end
 % Set some options for quadprog. 
 % Since it's hard to understand the output in the context of our problem,
 % supress quadprog's output and parse it on our own.
-qp_options = optimoptions('quadprog','Display','none');
+qpOptions = optimoptions('quadprog','Display','none');
 
 % If the user has asked for more debugging information:
 if debugging >= 2
-    qp_options.Display = 'final';
+    qpOptions.Display = 'final';
 end
 
 % Call quadprog
 % THE BIG STEP!
-[q_opt, ~, exitflag, output_info] = quadprog(H, f, A_ineq, b_ineq, A_eq, ...
-                                       b_eq, [], [], [], qp_options);
+[qOpt, ~, exitFlag, outputInfo] = quadprog(H, f, A_ineq, b_ineq, A_eq, ...
+                                       b_eq, [], [], [], qpOptions);
 
 % Call our parser to make some sense of out what happened
 if debugging >= 1
-    parse_qp_invkin_output(exitflag, output_info);
+    parseISOresult(exitFlag, outputInfo);
 end
 
 % more output if higher level of verbosity
 if debugging >= 2
     disp('Optimal force densities are:');
-    q_opt
+    qOpt
 end
 
 % We also need to check, afterwards, if the constraints were satisfied.
 % In particular, the 'max iterations exceeded' may emit solutions that are
 % OK-enough but also may emit invalid solutions.
 % So, quick check, independent of debugging level.
-% If any element of Ab * q_opt does not equal pb,
+% If any element of Ab * qOpt does not equal pb,
 % e.g. they are outside some tolerance level epsilon,
 eps = 1e-10;
-if any( (Ab * q_opt - pb) > eps )
-    warning(strcat('invkin_core_2d_rb returned a result but the constraints were NOT satisfied to a tolerance of ', ...
+if any( (Ab * qOpt - pb) > eps )
+    warning(strcat('rbISO_2d returned a result but the constraints were NOT satisfied to a tolerance of ', ...
         num2str(eps), ', solution may be invalid.'));
 end
 
@@ -416,18 +411,17 @@ if debugging >= 2
 end
 
 % Then, calculate the optimal forces. (results should be same dim as
-% q_opt.)
+% qOpt.)
 % again, probably some nice linear algebra here (TO-DO: efficiency),
 % but looping is intuitive and I'm busy.
-f_opt = zeros(size(q_opt));
+fOpt = zeros(size(qOpt));
 for k=1:s
-    f_opt(k) = lengths(k) * q_opt(k);
+    fOpt(k) = lengths(k) * qOpt(k);
 end
-%f_opt = lengths * q_opt;
 
 if debugging >= 2
     disp('Optimal forces on cables are:');
-    f_opt
+    fOpt
 end
 
 end

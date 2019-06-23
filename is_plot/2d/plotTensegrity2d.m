@@ -1,12 +1,12 @@
-% plot_2d_tensegrity_invkin.m
+% plotTensegrity2d.m
 % Copyright Andrew P. Sabelhaus 2018
 
-function handles = plot_2d_tensegrity_invkin( C, x, z, s, rad)
-%% plot_2d_tensegrity_invkin
+function handles = plotTensegrity2d( C, x, z, s, rad)
+%% plotTensegrity2d
 %
 %   This function plots a 2-dimensional tensegrity structure, with some
 %   additional labelling so that it's appropriate for debugging /
-%   visualizing an inverse kinematics problem for a tensegrity robot.
+%   visualizing an inverse statics problem for a tensegrity robot.
 %
 %   The function creates a new figure window and plots there. The plot is
 %   in 3D even though it's a 2D tensegrity, this gives a nice effect and is
@@ -42,7 +42,7 @@ function handles = plot_2d_tensegrity_invkin( C, x, z, s, rad)
 %
 %   Depends:
 %
-%       get_2d_surface_points, a function that calculates the inputs for
+%       getSurfPts2d, a function that calculates the inputs for
 %       surf to make a nice bar.
 %
 
@@ -65,63 +65,63 @@ r = size(C, 1) - s;
 
 % The surfaces are discretized. Let's specify the (amount of discretization
 % of the surfaces?) Default is 20?
-surf_discretization = 20;
+surfDiscr = 20;
 % For the cylinders, we need another discretization for the *length* of the
 % cylinder in addition to the *arc length* of the surrounding circles.
-surf_length_discretization = 40;
+surfLengthDiscr = 40;
 
 % Specify the color and thickness of cables.
 % TO-DO: pass this in?
-cable_color = 'r';
-cable_thickness = 2;
+cableColor = 'r';
+cableThickness = 2;
 
 % Color for the bars:
 black = [0,0,0];
-bar_color = black;
+barColor = black;
 
 % The handles array can be a cell array:
 handles = {};
 
 % We want the nodes to be a bit bigger than the bars.
 % ...but not that much.
-node_rad = 1.1 * rad;
+nodeRad = 1.1 * rad;
 
 % Labeling the nodes needs to happen with some offset from the point
 % itself, so that the sphere doesn't overtake the point.
 % We'll do the radius of the nodes plus some constant
-label_offset = node_rad + 0.02;
+labelOffset = nodeRad + 0.02;
 
 % We can also set the color and size of the text.
-label_color = 'k';
-label_size = 14;
+labelColor = 'k';
+labelSize = 14;
 
 %% Plot the nodes
 
 % A set of matrices for surf-ing a sphere. These will be moved around to
 % plot the nodes.
-[sphere_x, sphere_y, sphere_z] = sphere(surf_discretization);
+[sphereX, sphereY, sphereZ] = sphere(surfDiscr);
 
 % Each sphere will be at rad*(output of sphere) + position offset. 
-x_sphere_outer = node_rad * sphere_x;
-y_sphere_outer = node_rad * sphere_y;
-z_sphere_outer = node_rad * sphere_z;
+sphereOuterX = nodeRad * sphereX;
+sphereOuterY = nodeRad * sphereY;
+sphereOuterZ = nodeRad * sphereZ;
 
 % Plot spheres at each node.
 for i=1:n
     % Translate the sphere positions for surf.
     % NOTE that as described above, we switch y and z since MATLAB doesn't
     % plot using a usual right-handed coordinate system ("y" is "up", here.)
-    x_translated = x_sphere_outer + x(i);
-    y_translated = y_sphere_outer + z(i);
-    z_translated = z_sphere_outer;
+    translatedX = sphereOuterX + x(i);
+    translatedY = sphereOuterY + z(i);
+    translatedZ = sphereOuterZ;
     % Plot the surface
-    handles{end+1} = surf(gca, x_translated, y_translated, ...
-        z_translated, 'LineStyle', 'none', 'edgecolor', bar_color, ...
-        'facecolor', bar_color);
+    handles{end+1} = surf(gca, translatedX, translatedY, ...
+        translatedZ, 'LineStyle', 'none', 'edgecolor', barColor, ...
+        'facecolor', barColor);
     % Put a label for this node.
     % including the offset so it's easier to see.
-    handles{end+1} = text(x(i) + label_offset, z(i) + label_offset, 0, ...
-        num2str(i), 'Color', label_color, 'FontSize', label_size);
+    handles{end+1} = text(x(i) + labelOffset, z(i) + labelOffset, 0, ...
+        num2str(i), 'Color', labelColor, 'FontSize', labelSize);
 end
 
 
@@ -134,14 +134,14 @@ for j=1:s
     % A neat MATLAB trick here is to compare a vector with 1 or -1, to get
     % a true/false vector, then the 'find' command returns the index of the
     % 'true' element.
-    from_index = find( C(j,:) == 1 );
-    to_index = find( C(j,:) == -1 );
+    fromIndex = find( C(j,:) == 1 );
+    toIndex = find( C(j,:) == -1 );
     % The 'line' command operates on row vectors.
-    cable_x = [x(from_index), x(to_index)];
-    cable_z = [z(from_index), z(to_index)];
+    cableX = [x(fromIndex), x(toIndex)];
+    cableZ = [z(fromIndex), z(toIndex)];
     % ...and also returns a handle that we should be storing.
-    handles{end+1} = line(cable_x, cable_z, 'Color', cable_color, ...
-        'LineWidth', cable_thickness);
+    handles{end+1} = line(cableX, cableZ, 'Color', cableColor, ...
+        'LineWidth', cableThickness);
 end
 
 
@@ -156,25 +156,25 @@ for j=(s+1):(s+r)
     % A neat MATLAB trick here is to compare a vector with 1 or -1, to get
     % a true/false vector, then the 'find' command returns the index of the
     % 'true' element.
-    from_index = find( C(j,:) == 1 );
-    to_index = find( C(j,:) == -1 );
+    fromIndex = find( C(j,:) == 1 );
+    toIndex = find( C(j,:) == -1 );
     % The function get_2d_surface_points takes in each point as a column
     % vector \in R^3, so:
     % (and remember we're switching y and z because MATLAB)
-    start_pt = [x(from_index), z(from_index), 0];
-    end_pt = [x(to_index), z(to_index), 0];
+    startPt = [x(fromIndex), z(fromIndex), 0];
+    endPt = [x(toIndex), z(toIndex), 0];
     % Get the inputs for surf-ing this bar
-    [x_cyl, y_cyl, z_cyl] = get_2d_surface_points(rad, surf_discretization, ...
-                surf_length_discretization, start_pt, end_pt);
+    [cylX, cylY, cylZ] = getSurfPts2d(rad, surfDiscr, ...
+                surfLengthDiscr, startPt, endPt);
     % Finally, plot the bar.
-    handles{end+1} = surf(gca, x_cyl, y_cyl, ...
-        z_cyl, 'LineStyle', 'none', 'edgecolor', bar_color, ...
-        'facecolor', bar_color);
+    handles{end+1} = surf(gca, cylX, cylY, ...
+        cylZ, 'LineStyle', 'none', 'edgecolor', barColor, ...
+        'facecolor', barColor);
 end
 
 
 %% Some labels
-title('Tensegrity Structure used w/InvKin');
+title('Tensegrity Structure, 2D');
 xlabel('x position (m)');
 ylabel('z position (m)');
 % Do a font size change.
