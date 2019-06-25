@@ -322,8 +322,8 @@ if debugging >= 2
 end
 
 % The inequality constraint for the input saturation constraint is
-% \mathbf{L} \mathbf{q} \leq \bm{\kappa}(\boldsymbol{\ell} - \mathbf{u}^{min})
-% so
+% \mathbf{L} \mathbf{q} \leq \bm{\kappa}(\boldsymbol{\ell} -
+% \mathbf{u}^{min}) so
 Kappa = diag(kappa);
 L = diag(lengths);
 u_min_vector = u_min * ones(s,1);

@@ -83,7 +83,6 @@ m_tot = sum(m);
 
 if debugging >= 2
     v
-    coords_v
 end
 
 % A debugging message if desired, and if the problem is statically

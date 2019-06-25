@@ -24,6 +24,8 @@ addpath( genpath('../../is_core/2d') );
 addpath( genpath('../../is_core/helper') );
 % same for the plotting
 addpath( genpath('../../is_plot/2d') );
+% and the input trajectories
+addpath( genpath('../is_state_traj') );
 
 %% Set up the parameters
 
@@ -400,7 +402,9 @@ translation0 = [calibratedPosFreeX - width/3;
 % numPts = 10;
 % numPts = 20;
 
-numPts = 50;
+% numPts = 50;
+% Used for the data collected June 2019
+numPts = 80;
 
 % For the frames we've chosen, it doesn't make sense to rotate the vertebra
 % around the origin: we do not want to sweep out from the corner of the
@@ -459,17 +463,19 @@ py = py - m*g;
 
 %% Solve the inverse statics problem
 
+% the objective function weight is
+% R = getObj_PE(s, lengths, kappa);
+R = getObj_2norm(s);
+
 % Solve, over each point.
 % Let's use a cell array for Ab and pb, since I don't feel like thinking
 % over their sizes right now.
 fOpt = zeros(s, numPts);
 qOpt = zeros(s, numPts);
 % we also need the lengths for calculating u from q*.
-lengths = zeros(s, numPts);
+len = zeros(s, numPts);
 Ab = {};
 pb = {};
-
-%%%%%%%%%%%%%%%% STOPPED HERE
 
 % finally, the big function call:
 for i=1:numPts
@@ -477,10 +483,33 @@ for i=1:numPts
         disp('Iteration:');
         disp(num2str(i));
     end
+    % combine parameters into the mandatory and optional arguments to core
+    % The struct that contains all mandatory inputs to the ISO problem
+    mandInputs_i.x = x(:,i);
+    mandInputs_i.y = y(:,i);
+    mandInputs_i.px = px(:,i);
+    mandInputs_i.py = py(:,i);
+    mandInputs_i.C = C;
+    mandInputs_i.b = b;
+    mandInputs_i.s = s;
+
+    % The optional inputs
+    optionalInputs_i.w = w;
+    optionalInputs_i.R = R;
+    optionalInputs_i.qMin = qMin;
+    optionalInputs_i.debugging = debugging;
+    % including the uMin constraint
+    optionalInputs_i.uMin = uMin;
+    optionalInputs_i.kappa = kappa;
+    
     % quadprog is inside this function.
-    % Now, with input saturation constraint:
-    [fOpt(:,i), qOpt(:,i), lengths(:,i), Ab_i, pb_i] = invkin_core_2d_rb_sat(x(:,i), ...
-        y(:,i), px(:,i), py(:,i), w, C, s, b, qMin, kappa, uMin, debugging);
+    % Older call:
+%     [fOpt(:,i), qOpt(:,i), lengths(:,i), Ab_i, pb_i] = invkin_core_2d_rb_sat(x(:,i), ...
+%         y(:,i), px(:,i), py(:,i), w, C, s, b, qMin, kappa, uMin, debugging);
+
+    % Now with the struct passed in:
+    [fOpt(:,i), qOpt(:,i), len(:,i), Ab_i, pb_i] = rbISO_2d(mandInputs_i, ...
+        optionalInputs_i);
     % and insert this Ab and pb.
     Ab{end+1} = Ab_i;
     pb{end+1} = pb_i;
@@ -529,20 +558,20 @@ ylabel('4 (N)');
 % u_i = l_i - (F_i/kappa_i)
 
 % save in a vector
-u_opt = zeros(s, numPts);
-available_length = zeros(s, numPts);
+uOpt = zeros(s, numPts);
+availableLen = zeros(s, numPts);
 
 % it's more intuitive to iterate for now. At least, we can iterate over
 % cables and not over timesteps.
 for k=1:s
     % For cable k, divide the row in f_opt by kappa(k)
-    u_opt(k, :) = lengths(k,:) - (fOpt(k,:) ./ kappa(k));
+    uOpt(k, :) = len(k,:) - (fOpt(k,:) ./ kappa(k));
     % But, now include the length offset term. Accounts for the initial
     % spring length, as well as the little extender we had to use.    
     % 2019-05-14: UNSURE if the following has any physical meaning?
 %     u_opt_adj(k, :) = lengths(k,:) - init_len_offset(k) - (f_opt(k,:) ./ kappa(k));
     % Instead, collisions occur when u_opt - init_len_off < u_min.
-    available_length(k,:) = u_opt(k,:) - init_len_offset(k);
+    availableLen(k,:) = uOpt(k,:) - init_len_offset(k);
     
     % ^ 2019-05-13: It's not useful to talk in terms of rest length for our
     % problem. By doing "adjusted stretch" below, we don't end up needing
@@ -556,7 +585,7 @@ end
 
 % Does the cable get smaller than u_min?
 disp('Cable collisions: 0 = none, 1 = length shorter than min + offset');
-available_length < uMin
+availableLen < uMin
 
 
 % For use with the hardware example, it's easier to instead define a
@@ -564,23 +593,23 @@ available_length < uMin
 % Note that we also save a difference from Pi_0, the calibrated position.
 % Some algebra shows that the control input here is stretch added to the
 % delta of absolute cable lengths from Pi_0 to lengths_i.
-stretch_opt = zeros(s, numPts);
-lengths_diff = zeros(s, numPts);
-stretch_opt_adj = zeros(s, numPts);
+stretchOpt = zeros(s, numPts);
+lengthsDiff = zeros(s, numPts);
+stretchOptAdj = zeros(s, numPts);
 
 for k=1:s
     % For cable k, divide the row in f_opt by kappa(k)
-    stretch_opt(k, :) = (fOpt(k,:) ./ kappa(k));
+    stretchOpt(k, :) = (fOpt(k,:) ./ kappa(k));
     % the length difference is a subtraction from the initial pose
     % note that lengths_0 is transposed as calculated above.
     % We're iterating over cables, so need to index into the initial
     % lengths. Abusing some MATLAb broadcasting here (properly, ones(1,k)
     % multiplied by lengths_0(k).)
-    lengths_diff(k,:) = len0(k)' - lengths(k,:);
+    lengthsDiff(k,:) = len0(k)' - len(k,:);
     % and then add to the adjusted stretch,
     % ALSO SCALE TO GET CM, since the microcontroller uses that best, not
     % meters.
-    stretch_opt_adj(k,:) = (stretch_opt(k,:) + lengths_diff(k,:)) * 100;
+    stretchOptAdj(k,:) = (stretchOpt(k,:) + lengthsDiff(k,:)) * 100;
     
     % 2019-05-13: NOTE HERE that positive "lengths_diff" means positive
     % rettraction on the cable length: e.g., lengths_diff(1,1) = 0.107 means
@@ -595,16 +624,16 @@ hold on;
 subplot(4,1,1)
 hold on;
 title('Cable Inputs (Amount of Retraction From Calibration)');
-plot(stretch_opt_adj(1,:))
+plot(stretchOptAdj(1,:))
 ylabel('1 (cm)');
 subplot(4,1,2)
-plot(stretch_opt_adj(2,:))
+plot(stretchOptAdj(2,:))
 ylabel('2 (cm)');
 subplot(4,1,3)
-plot(stretch_opt_adj(3,:))
+plot(stretchOptAdj(3,:))
 ylabel('3 (cm)');
 subplot(4,1,4);
-plot(stretch_opt_adj(4,:));
+plot(stretchOptAdj(4,:));
 ylabel('4 (cm)');
 
 %% Plot the structure, for reference.
@@ -642,7 +671,7 @@ savefilePath = strcat(pwd, filesep);
 nOrB = 1;
 %saveISOresult2d(uOpt, xi_all, n, r, n_or_b, savefile_path);
 % For the hardware test, we want to use "stretch" not rest length.
-saveISOresult2d(stretch_opt_adj, xiAll, n, r, nOrB, savefilePath);
+saveISOresult2d(stretchOptAdj, xiAll, n, r, nOrB, savefilePath);
 
 
 

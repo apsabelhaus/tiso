@@ -236,6 +236,7 @@ mandInputs.s = s;
 optionalInputs.w = w;
 optionalInputs.R = R;
 optionalInputs.qMin = qMin;
+optionalInputs.debugging = debugging;
 
 % Solve. Rigid body reformulation, two dimensions.
 [fOpt, qOpt, Ab, pb] = rbISO_2d(mandInputs, optionalInputs);

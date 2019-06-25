@@ -376,9 +376,35 @@ if debugging >= 2
     pb
 end
 
+% the inequality constraints are in the form of A_ineq * q <= b_ineq,
+% so we need q >= mintensionvec becomes -q <= -mintensionvec
 % Since we assume that the first s rows of C are for the cables, make the
 % constraint for the min force density on those cables:
-qMinVec = qMin * [ones(s,1)];
+qMinVec = qMin * ones(s,1);
+
+% If including the minimum rest length constraint, this becomes
+
+if uMinConstr == 1
+    % The inequality constraint for the input saturation constraint is
+    % \mathbf{L} \mathbf{q} \leq \bm{\kappa}(\boldsymbol{\ell} -
+    % \mathbf{u}^{min}) so
+    Kappa = diag(kappa);
+    L = diag(lengths);
+    uMinVec = uMin * ones(s,1);
+    % so the righthandside becomes
+    bIneqSat = Kappa * (lengths - uMinVec);
+    
+    % the total inequality constraint is then
+    A_ineq = [L;
+             -eye(s)];
+    b_ineq = [ bIneqSat;
+              -qMinVec];
+else
+    % If not using the input saturation constraint,
+    A_ineq = - eye(s);
+    b_ineq = - qMinVec;
+end
+
 
 %% Solve the optimization problem
 
@@ -392,19 +418,8 @@ end
 % quadprog's arguments are
 % 0.5 * R (quadratic term), f (linear term), A_ineq, b_ineq, A_eq, b_eq
 
-% Our problem is
-% min qs'*R*qs s.t. Ab*qs=pb, q - mintensionvec \geq 0
-
-% Our R is only in s x s now
-%R = eye(s);
-
 % no linear term
 f = [];
-
-% the inequality constraints are in the form of A_ineq * q <= b_ineq,
-% so we need q >= mintensionvec becomes -q <= -mintensionvec
-A_ineq = - eye(s);
-b_ineq = - qMinVec;
 
 % equality constraints are A q = p
 A_eq = Ab;
