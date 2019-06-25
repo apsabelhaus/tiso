@@ -1,7 +1,10 @@
 %% rbISO_2d.m
 % Copyright Andrew P. Sabelhaus 2019
 
-function [fOpt, qOpt, lengths, Ab, pb] = rbISO_2d(x, y, px, py, w, C, R, s, b, qMin, debugging)
+% Older function declaration:
+% function [fOpt, qOpt, lengths, Ab, pb] = rbISO_2d(x, y, px, py, w, C, R, s, b, qMin, debugging)
+
+function [fOpt, qOpt, lengths, Ab, pb] = rbISO_2d(mandInputs, varargin)
 %% rbISO_2d  
 % rbISO_2d performs an inverse statics optimziation for a single pose of a
 % 2-dimensional tensegrity structure (robot), using the reformulated
@@ -26,41 +29,69 @@ function [fOpt, qOpt, lengths, Ab, pb] = rbISO_2d(x, y, px, py, w, C, R, s, b, q
 % external reaction forces are removed via w, then this no longer matters
 % and a zero vector can be passed in.
 %
+%
 % Inputs:
-%   x, y = the x, and y positions of each node in the structure. Must
-%   be the same dimension. Cartesian frame.
-%       Note, in two dimensions, y is "up" e.g. gravity works in -y.
-%       This is so that a right-handed coordinate frame still makes sense
-%       in 2D.
 %
-%   px, py = vectors of external forces, applied to each node (has the same
-%   dimension as x, y.)
+%   mandInputs: a struct of inputs to the problem that are MANDATORY. These
+%       specifically include:
 %
-%   w = anchoring vector. Elements = 1 if node should be kept, = 0 if node
-%   is an anchor and should be thrown out of the force balance. Size is n.
+%           x, y = the x, and y positions of each node in the structure. Must
+%               be the same dimension. Cartesian frame.
+%               Note, in two dimensions, y is "up" e.g. gravity works in -y.
+%               This is so that a right-handed coordinate frame still makes sense
+%               in 2D.
 %
-%   C = configuration matrix for the structure. See literature for
-%   definition.
+%           px, py = vectors of external forces, applied to each node (has the same
+%               dimension as x, y.)
 %
-%   R = weighting matrix for the optimization problem. Use helper functions
-%   to choose it (either 2-norm of force densities, or if spring constants
-%   available, total potential energy in the cables.)
+%           C = configuration matrix for the structure. See literature for
+%               definition.
 %
-%   s = number of cables (tension-only members in the system.) This is
-%   required to pose the optimization program such that no cables "push."
 %
-%   b = number of rigid bodies. With fancier algorithms, we could actually
-%   do a search through the C matrix (graph search!) to find how many
-%   independent cycles there are in the "r" block of it (rods only), but
-%   for now, it's easier to just have the caller specify. (Robot designers
-%   will know this intuitively: e.g., we've made a robot with 2 vertebrae.)
+%           s = number of cables (tension-only members in the system.) This is
+%               required to pose the optimization program such that no cables "push."
 %
-%   qMin = minimum force density for an individual compression member. 
+%           b = number of rigid bodies. With fancier algorithms, we could actually
+%               do a search through the C matrix (graph search!) to find how many
+%               independent cycles there are in the "r" block of it (rods only), but
+%               for now, it's easier to just have the caller specify. (Robot designers
+%               will know this intuitively: e.g., we've made a robot with 2 vertebrae.)
 %
-%   debugging = level of debugging/verbosity from this script. Options:
-%       0 = no output except for errors
-%       1 = Starting message, results from quadprog
-%       2 = Verbose output, lots of dimensions and matrices and whatnot.
+%   optionalInputs: a struct of inputs to the problem that are OPTIONAL.
+%       These specifically include (and have the default values/behaviors
+%       of):
+%
+%           w = anchoring vector. Elements = 1 if node should be kept, = 0 if node
+%               is an anchor and should be thrown out of the force balance. Size is n.
+%               Default value: ones(n,1), keeping all nodes.
+%
+%           R = weighting matrix for the optimization problem. Use helper functions
+%               to choose it (either 2-norm of force densities, or if spring constants
+%               available, total potential energy in the cables.)
+%               Default value: eye(s), i.e., getObj_2norm.
+%
+%           qMin = minimum force density for an individual tension member. 
+%               Scalar. (TO-DO: implement qMin possible size s.)
+%               Default value: 0.
+%
+%           debugging = level of debugging/verbosity from this function. Options:
+%               0 = no output except for errors
+%               1 = Starting message, results from quadprog
+%               2 = Verbose output, lots of dimensions and matrices and whatnot.
+%               Default value: 1.
+%
+%           kappa = spring constant(s) for the cables. Function is polymorphic
+%               with either:
+%                   \in \mathbb{R}_+ : one spring constant for all cables
+%                   \in \mathbb{R}_+^s : vector of different spring constants
+%                                        per-cable
+%               Default value: unused, only needed for minimum rest length
+%               constraint (which is optional).
+%
+%           uMin = minimum cable rest length for an individual cable. Scalar, \in
+%               \mathbb{R}^+.
+%               Default value: unused, only needed for minimum rest length
+%               constraint (which is optional.)
 %
 % Outputs:
 %   fOpt = optimal forces (inv kin soln) for ALL members. First s are
@@ -76,56 +107,95 @@ function [fOpt, qOpt, lengths, Ab, pb] = rbISO_2d(x, y, px, py, w, C, R, s, b, q
 %   Ab, pb = calculated static equilibrium constraint, 
 %           provided for debugging if desired.
 
+%% Check if inputs are valid (conformal dimensions of vectors and matrices)
+
+% First: do we have optional arguments/inputs?
+hasOI = (nargin > 1);
+
+% pick out the optional args struct if it's there
+if hasOI
+    optionalInputs = varargin{1};
+else
+    % declaring a dummy here helps with assigning default values later
+    optionalInputs = struct();
+end
+
+% validate each way. This is so that we don't pass to validate_2d a cell
+% array of size one, containing one empty cell array.
+if hasOI
+    validate_2d(mandInputs, optionalInputs);
+else
+    validate_2d(mandInputs);
+end
+
+% Assuming validation works, expand out mandatory arguments
+x = mandInputs.x;
+y = mandInputs.y;
+px = mandInputs.px;
+py = mandInputs.py;
+C = mandInputs.C;
+s = mandInputs.s;
+b = mandInputs.b;
+% The number of nodes, according to the C matrix, is its number of columns:
+n = size(C,2);
+
+% get the default optional arguments to use / compare against those passed
+% in. A struct.
+defaultOI = getDefaultOptInputs(n, s);
+
+% expand optional arguments if they exist, fill in defaults for those that
+% do not
+
+if isfield(optionalInputs, 'w')
+    w = optionalInputs.w;
+else
+    w = defaultOI.w;
+end
+
+if isfield(optionalInputs, 'R')
+    R = optionalInputs.R;
+else
+    R = defaultOI.R;
+end
+   
+if isfield(optionalInputs, 'qMin')
+    qMin = optionalInputs.qMin;
+else
+    qMin = defaultOI.qMin;
+end
+    
+if isfield(optionalInputs, 'debugging')
+    debugging = optionalInputs.debugging;
+else
+    debugging = defaultOI.debugging;
+end
+    
+if isfield(optionalInputs, 'kappa')
+    kappa = optionalInputs.kappa;
+    % Expand kappa if a scalar was passed in.
+    if isscalar(kappa)
+        kappa = kappa * ones(s,1);
+    end
+    % else do nothing - spring const not defined
+end
+
+if isfield(optionalInputs, 'uMin')
+    uMin = optionalInputs.uMin;
+    % else do nothing - spring const not defined
+end
+
+% default is to not use the minimum rest length constraint
+uMinConstr = 0;
+% but if both uMin and kappa are defined, use it:
+if (exist('kappa', 'var') == 1) && (exist('uMin', 'var') == 1)
+    uMinConstr = 1;
+end
+
+
 %% Startup message.
 
 if debugging >= 1
     disp('Starting rbISO_2d (inverse statics optimization, two dimensions, rigid body reformulation)...');
-end
-
-%% Check if inputs are valid (conformal dimensions of vectors and matrices)
-
-% The number of nodes, according to the C matrix, is its number of columns:
-n = size(C,2);
-% Verify that this is also the length of all other nodal vectors.
-if n ~= size(x, 1)
-    error('Error: the C matrix and the x vector (node positions in x) have a different number of nodes. Cannot continue.');
-elseif n ~= size(y, 1)
-    error('Error: the C matrix and the z vector (node positions in z) have a different number of nodes. Cannot continue.');
-elseif n ~= size(px, 1)
-    error('Error: the C matrix and the px vector (node external rxn. forces in x) have a different number of nodes. Cannot continue.');
-elseif n ~= size(py, 1)
-    error('Error: the C matrix and the pz vector (node external rxn. forces in z) have a different number of nodes. Cannot continue.');
-elseif n ~= size(w, 1)
-    error('Error: the C matrix and the w vector (anchoring vector) have a different number of nodes. Cannot continue.');
-end
-
-% Also check that each of these are a column vector.
-if size(x, 2) ~= 1
-    error('Error: x is not a column vector. Cannot continue.');
-elseif size(y, 2) ~= 1
-    error('Error: z is not a column vector. Cannot continue.');
-elseif size(px, 2) ~= 1
-    error('Error: px is not a column vector. Cannot continue.');
-elseif size(py, 2) ~= 1
-    error('Error: pz is not a column vector. Cannot continue.');
-elseif size(w, 2) ~= 1
-    error('Error: w is not a column vector. Cannot continue.');
-end
-
-% There must be at least one rigid body
-if b < 1
-    error('Error: b is less than one. Must be at least one rigid body.');
-end
-
-% There cannot be more cables than total number of members
-if s > size(C, 1)
-    error('Error: you have specified that there are more cables than total number of members, this is not possible. Cannot continue.');
-end
-
-% Minimum cable tension must be positive - otherwise we'd have cables
-% holding compressive loads
-if qMin < 0
-    error('Error: minimum cable tension must be positive, please specify a qMin > 0.');
 end
 
 %% First, formulate the constants / parameters for the optimization:
@@ -361,8 +431,6 @@ qpOptions = optimoptions('quadprog','Display','none');
 if debugging >= 2
     qpOptions.Display = 'final';
 end
-
-R
 
 % Call quadprog
 % THE BIG STEP!

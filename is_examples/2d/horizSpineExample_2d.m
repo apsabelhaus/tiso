@@ -1,19 +1,10 @@
-%% horizSpineIS_2b_2d.m
+%% horizSpineIS_example_2d.m
 % Copyright Andrew P. Sabelhaus 2019
 
 % This script used the tiso libraries to solve the inverse statics problem
-% for a two body (b=2) tensegrity spine, defined in 2 dimensions. 
+% for a two body (b=2) tensegrity spine, defined in d=2 dimensions. 
 % As the term is used here, 'spine'
 % refers to a structure with repeated rigid bodies of the same geometry and
-% mass.
-
-% As of 2018-08-16, this scrupt (needs to) use the rigid body reformulation
-% of the inverse statics problem. And, that reformulation currently has
-% stringent constraints on when it can be used - right now, only with 2
-% rigid bodies.
-% As of 2018-11-12: script 'might' now work for b > 2, we've
-% algorithmically taken care of the moment balance. TO-DO: check and
-% confirm.
 
 %% set up the workspace
 clear all;
@@ -186,7 +177,7 @@ end
 
 % The nodal coordinates (x, z)
 % calculate from position trajectory
-coord = getCoord2d(a, xi, debugging);
+coord = getCoord_2d(a, xi, debugging);
 
 if debugging >= 2
     coord
@@ -227,12 +218,30 @@ kappa_i = 4.79 * lbin_in_nm;
 kappa = ones(s,1) * kappa_i;
 
 % so the objective function weight is
-R = getObj_PE(s, lengths, kappa);
+% R = getObj_PE(s, lengths, kappa);
+R = getObj_2norm(s);
 
 %% Solve the inverse statics problem
 
+% The struct that contains all mandatory inputs to the ISO problem
+mandInputs.x = x;
+mandInputs.y = y;
+mandInputs.px = px;
+mandInputs.py = py;
+mandInputs.C = C;
+mandInputs.b = b;
+mandInputs.s = s;
+
+% The optional inputs
+optionalInputs.w = w;
+optionalInputs.R = R;
+optionalInputs.qMin = qMin;
+
 % Solve. Rigid body reformulation, two dimensions.
-[fOpt, qOpt, Ab, pb] = rbISO_2d(x, y, px, py, w, C, R, s, b, qMin, debugging);
+[fOpt, qOpt, Ab, pb] = rbISO_2d(mandInputs, optionalInputs);
+
+
+% [fOpt, qOpt, Ab, pb] = rbISO_2d(x, y, px, py, w, C, R, s, b, qMin, debugging);
 
 % Seems correct, intuitively!
 % Cable 1 is horizontal, below.

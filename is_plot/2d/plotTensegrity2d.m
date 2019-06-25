@@ -75,6 +75,9 @@ surfLengthDiscr = 40;
 cableColor = 'r';
 cableThickness = 2;
 
+% Color the nodes differently for illustration.
+nodeColor = 'b';
+
 % Color for the bars:
 black = [0,0,0];
 barColor = black;
@@ -84,7 +87,8 @@ handles = {};
 
 % We want the nodes to be a bit bigger than the bars.
 % ...but not that much.
-nodeRad = 1.1 * rad;
+% nodeRad = 1.1 * rad;
+nodeRad = 1.2 * rad;
 
 % Labeling the nodes needs to happen with some offset from the point
 % itself, so that the sphere doesn't overtake the point.
@@ -116,8 +120,9 @@ for i=1:n
     translatedZ = sphereOuterZ;
     % Plot the surface
     handles{end+1} = surf(gca, translatedX, translatedY, ...
-        translatedZ, 'LineStyle', 'none', 'edgecolor', barColor, ...
-        'facecolor', barColor);
+        translatedZ, 'LineStyle', 'none', 'edgecolor', nodeColor, ...
+        'facecolor', nodeColor);
+    % ...was barColor for both.
     % Put a label for this node.
     % including the offset so it's easier to see.
     handles{end+1} = text(x(i) + labelOffset, z(i) + labelOffset, 0, ...
