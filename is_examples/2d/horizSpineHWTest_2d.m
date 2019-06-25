@@ -107,12 +107,14 @@ d_2 = d_2 * 10^-2;
 % These are SIGNED so we can do nice things with them later, unlike the
 % free vertebra which is not signed (some dimensions don't make signed
 % sense.
-A_x = -6.33;
-A_y = 9.55;
+
+% Corrected frame for the hardware test:
+A_x = -6.56;
+A_y = 0;
 B_x = -6.56;
-B_y = 40.03;
+B_y = 30.7;
 C_x = 18.42;
-C_y = 24.77;
+C_y = 15.24;
 
 % CONVERTED to meters:
 A_x = A_x * 10^-2;
@@ -130,11 +132,13 @@ a_fixed = [  A_x,       A_y;
 % As with the local vertebra frame, locations of the dowel pins are needed
 % to get the initial untensioned vertebra pose
 % E = dowel pin closer to anchors (left),
-% G = dowl pin on the right
+% G = dowel pin on the right
+
+% Corrected frame for the hardware test:
 E_x = 33.66;
-E_y = 24.77;
+E_y = 15.24;
 G_x = 41.28;
-G_y = 24.77;
+G_y = 15.24;
 
 % CONVERTED to meters:
 E_x = E_x * 10^-2;
@@ -402,9 +406,9 @@ translation0 = [calibratedPosFreeX - width/3;
 % numPts = 10;
 % numPts = 20;
 
-% numPts = 50;
+numPts = 50;
 % Used for the data collected June 2019
-numPts = 80;
+% numPts = 80;
 
 % For the frames we've chosen, it doesn't make sense to rotate the vertebra
 % around the origin: we do not want to sweep out from the corner of the
@@ -670,8 +674,9 @@ savefilePath = strcat(pwd, filesep);
 % we used the rigid body reformulation method here, 
 nOrB = 1;
 %saveISOresult2d(uOpt, xi_all, n, r, n_or_b, savefile_path);
+
 % For the hardware test, we want to use "stretch" not rest length.
-saveISOresult2d(stretchOptAdj, xiAll, n, r, nOrB, savefilePath);
+% saveISOresult2d(stretchOptAdj, xiAll, n, r, nOrB, savefilePath);
 
 
 
