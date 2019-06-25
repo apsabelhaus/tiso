@@ -507,38 +507,13 @@ for i=1:numPts
     optionalInputs_i.kappa = kappa;
     
     % quadprog is inside this function.
-    % Older call:
-%     [fOpt(:,i), qOpt(:,i), lengths(:,i), Ab_i, pb_i] = invkin_core_2d_rb_sat(x(:,i), ...
-%         y(:,i), px(:,i), py(:,i), w, C, s, b, qMin, kappa, uMin, debugging);
-
-    % Now with the struct passed in:
     [fOpt(:,i), qOpt(:,i), len(:,i), Ab_i, pb_i] = rbISO_2d(mandInputs_i, ...
         optionalInputs_i);
+    
     % and insert this Ab and pb.
     Ab{end+1} = Ab_i;
     pb{end+1} = pb_i;
 end
-
-% Seems correct, intuitively!
-% Cable 1 is horizontal, below.
-% Cable 2 is horizontal, above.
-% Cable 3 is saddle, below.
-% Cable 4 is saddle, above.
-
-% It makes sense that cable 2 force > cable 1 force, for an "upward" force
-% in the saggital plane, counteracting gravity on the suspended vertebra.
-% it then also could make sense that cable 3 has no force: the
-% gravitational force on the suspended vertebra gives a clockwise moment,
-% which is also the direction of cable 3.
-% Cable 4's force is likely counteracting the gravitational moment of the
-% suspending vertebra.
-
-% TO-DO: Confirm, by hand/in simulation, that these forces actually keep
-% the vertebra in static equilibrium.
-
-% TO-DO: sign check. Are we applying positive tension forces or negative
-% tension forces? See if/what solution pops out with the constraint in the
-% opposite direction (< c, not > c.)
 
 % A quick plot of the cable tensions.
 figure; 
@@ -572,14 +547,9 @@ for k=1:s
     uOpt(k, :) = len(k,:) - (fOpt(k,:) ./ kappa(k));
     % But, now include the length offset term. Accounts for the initial
     % spring length, as well as the little extender we had to use.    
-    % 2019-05-14: UNSURE if the following has any physical meaning?
-%     u_opt_adj(k, :) = lengths(k,:) - init_len_offset(k) - (f_opt(k,:) ./ kappa(k));
+
     % Instead, collisions occur when u_opt - init_len_off < u_min.
     availableLen(k,:) = uOpt(k,:) - init_len_offset(k);
-    
-    % ^ 2019-05-13: It's not useful to talk in terms of rest length for our
-    % problem. By doing "adjusted stretch" below, we don't end up needing
-    % ANY of the "initial_length" offset stuff!
 end
 
 % Check to confirm that these satisfy the desired input constraint.
