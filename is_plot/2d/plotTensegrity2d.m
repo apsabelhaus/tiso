@@ -180,8 +180,8 @@ end
 
 %% Some labels
 title('Tensegrity Structure, 2D');
-xlabel('x position (m)');
-ylabel('y position (m)');
+xlabel('X Position (m)');
+ylabel('Y Position (m)');
 % Do a font size change.
 set(gca, 'FontSize', 14);
 

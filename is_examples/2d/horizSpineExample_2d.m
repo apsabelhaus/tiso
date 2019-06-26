@@ -165,10 +165,15 @@ xi(3) = -pi/2;
 % To make things interesting, let's rotate it a small bit, too.
 %xi(3) = -pi/2 + pi/16;
 
+% xi(4:6) = [     barEndpoint * (3/2);
+%                 0;
+%                -pi/2 + pi/16];
+
+% No rotation:
 xi(4:6) = [     barEndpoint * (3/2);
                 0;
-               -pi/2 + pi/16];
-            
+               -pi/2];
+
 if debugging >= 2
     xi
 end
