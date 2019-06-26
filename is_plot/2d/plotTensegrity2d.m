@@ -76,7 +76,7 @@ cableColor = 'r';
 cableThickness = 2;
 
 % Color the nodes differently for illustration.
-nodeColor = 'b';
+nodeColor = 'k';
 
 % Color for the bars:
 black = [0,0,0];
@@ -125,8 +125,8 @@ for i=1:n
     % ...was barColor for both.
     % Put a label for this node.
     % including the offset so it's easier to see.
-    handles{end+1} = text(x(i) + labelOffset, z(i) + labelOffset, 0, ...
-        num2str(i), 'Color', labelColor, 'FontSize', labelSize);
+%     handles{end+1} = text(x(i) + labelOffset, z(i) + labelOffset, 0, ...
+%         num2str(i), 'Color', labelColor, 'FontSize', labelSize);
 end
 
 
@@ -181,7 +181,7 @@ end
 %% Some labels
 title('Tensegrity Structure, 2D');
 xlabel('x position (m)');
-ylabel('z position (m)');
+ylabel('y position (m)');
 % Do a font size change.
 set(gca, 'FontSize', 14);
 

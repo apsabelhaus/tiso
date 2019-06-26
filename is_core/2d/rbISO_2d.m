@@ -242,7 +242,6 @@ d = 2;
 
 % Helper matrix:
 
-% H_hat = [eye(s), zeros(s, r)];
 H = [eye(s);
      zeros(r, s)];
  

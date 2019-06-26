@@ -53,8 +53,17 @@ switch exitFlag
         disp(' ');
         error('Inverse Statics Optimization calculation failed, now exiting.');
         
+    case -8
+        disp(' ');
+        disp('Quadprog was unable to compute a step direction.');
+        disp('This has been known to happen when b is inconsistent with the remaining number of bodies after removing anchors.');
+        disp('Did you recently remove more anchor nodes (different w) but forget to change b?');
+        disp(' ');
+        
     otherwise
         disp('Quadprog exit flag not recognized, set to a higher debugging level for more information');
+        disp('Exit flag was:');
+        disp(exitFlag);
         
 end
 

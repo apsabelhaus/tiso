@@ -421,8 +421,6 @@ rotAxisPt = [ (C_x + A_x); C_y];
 [xiAll] = trajBend2b_2d(translation0, rotation0, minSweep, ...
     maxSweep, rotAxisPt, numPts);
 
-% use \xi for the system states.
-
 %% Calculations for the inputs to the core tiso library
 
 % The nodal coordinates (x, z)
