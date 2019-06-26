@@ -64,6 +64,7 @@ a = [   0,              0;
 % Mass of a single vertebra
 % Mass as measured with a scale on 2018-11-18 is about 500g
 mBody = 0.495;
+% mBody = 1;
     
 if debugging >= 2
     a
@@ -175,7 +176,8 @@ w = [zeros(sigma, 1);
 %% Trajectory of poses
 
 % Number of poses
-numPts = 10;
+% numPts = 10;
+numPts = 30;
 
 % Initial pose of the spine
 % The frames need to be rotated to horizontal from the above
@@ -192,7 +194,7 @@ rotAxisPt = [0; 0];
 % these are referenced to the MAXIMUM sweep angle: these are what the
 % furthest-out vertebra performs.
 minSweep = 0;
-maxSweep = pi/16;
+maxSweep = pi/10;
 
 % get the trajectory:
 % NOTE that this is for all bodies, but since we're removing one, have to
@@ -394,6 +396,10 @@ plotTensegrity2d(C, x(:,1), y(:,1), s, radius);
 % Final position:
 plotTensegrity2d(C, x(:,end), y(:,end), s, radius);
 
+% plot the cable tensions too
+% legendlabels = {'Horiz. Top', 'Horiz. Bot.', 'Saddle Top', 'Saddle Bot.'};
+legendlabels = {'HB', 'HT', 'SB', 'ST'};
+plotCableTensions(fOpt, sigma, 80, legendlabels);
 
 
 

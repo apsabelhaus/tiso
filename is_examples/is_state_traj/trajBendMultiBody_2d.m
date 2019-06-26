@@ -49,55 +49,27 @@ xiAll = zeros(3*b, numPts);
 % We'll span out all the angles to insert.
 % beta is sweep angle.
 
-% % Ratio of change between each body, as a way to scale the sweep.
-% % For example, in the T-CST paper on the spine we did three vertebrae
-% % with max sweeps pi/16, pi/12, pi/8, which is roughly 2/3 to 3/4 per
-% % body...
-% % sweepRatio = 2/3;
-% % sweepRatio = 1/2;
+% Ratio of change between each body, as a way to scale the sweep.
+% For example, in the T-CST paper on the spine we did three vertebrae
+% with max sweeps pi/16, pi/12, pi/8, which is roughly 2/3 to 3/4 per
+% body...
+% sweepRatio = 2/3;
+% sweepRatio = 1/2;
 % sweepRatio = 3/4;
-% 
-% % Initialize the sweep angles
-% % timesteps are columns
-% beta = zeros(b, numPts);
-% % for each body, counting backwards from the largest change...
-% nextMax = maxSweep;
-% nextMin = minSweep;
-% % decrementing, but not doing the non-moving body.
-% for i=b:-1:2
-%     % scaling the min and max sweep for this body.
-%     % For example,
-%     betaMin_i = nextMin;
-%     betaMax_i = nextMax;
-%     % insert into trajectory
-%     % BUT also add the initial rotation to correct for initial pose.
-%     % In order to keep the moving body parallel to the swept-out centerline
-%     % (e.g. rotating around the origin), the sweep angle and initial angle add.
-% %     beta(i,:) = linspace(betaMin_i, betaMax_i, numPts) + rotation0;
-%     beta(i,:) = linspace(betaMin_i, betaMax_i, numPts);
-%     % and into the full state trajectory, where the third coordinate is
-%     % rotation. Example, 4th body at 3b+2.
-%     xiAll(3*i, :) = beta(i, :);
-%     % increment for subsequent bodies.
-%     nextMax = nextMax * sweepRatio;
-%     nextMin = nextMin * sweepRatio;
-% end
-
-% ...another way to do it is to just have the sweep evenly divided between
-% the bodies. 
+sweepRatio = 4/5;
 
 % Initialize the sweep angles
 % timesteps are columns
 beta = zeros(b, numPts);
 % for each body, counting backwards from the largest change...
-% nextMax = maxSweep;
-% nextMin = minSweep;
+nextMax = maxSweep;
+nextMin = minSweep;
 % decrementing, but not doing the non-moving body.
-for i=2:b
+for i=b:-1:2
     % scaling the min and max sweep for this body.
-    % For example, (accounting for the currently present off by one error
-    betaMin_i = minSweep*((i-1)/(b-1));
-    betaMax_i = maxSweep*((i-1)/(b-1));
+    % For example,
+    betaMin_i = nextMin;
+    betaMax_i = nextMax;
     % insert into trajectory
     % BUT also add the initial rotation to correct for initial pose.
     % In order to keep the moving body parallel to the swept-out centerline
@@ -108,9 +80,38 @@ for i=2:b
     % rotation. Example, 4th body at 3b+2.
     xiAll(3*i, :) = beta(i, :);
     % increment for subsequent bodies.
-%     nextMax = nextMax * sweepRatio;
-%     nextMin = nextMin * sweepRatio;
+    nextMax = nextMax * sweepRatio;
+    nextMin = nextMin * sweepRatio;
 end
+
+% ...another way to do it is to just have the sweep evenly divided between
+% the bodies. 
+
+% % Initialize the sweep angles
+% % timesteps are columns
+% beta = zeros(b, numPts);
+% % for each body, counting backwards from the largest change...
+% % nextMax = maxSweep;
+% % nextMin = minSweep;
+% % decrementing, but not doing the non-moving body.
+% for i=2:b
+%     % scaling the min and max sweep for this body.
+%     % For example, (accounting for the currently present off by one error
+%     betaMin_i = minSweep*((i-1)/(b-1));
+%     betaMax_i = maxSweep*((i-1)/(b-1));
+%     % insert into trajectory
+%     % BUT also add the initial rotation to correct for initial pose.
+%     % In order to keep the moving body parallel to the swept-out centerline
+%     % (e.g. rotating around the origin), the sweep angle and initial angle add.
+% %     beta(i,:) = linspace(betaMin_i, betaMax_i, numPts) + rotation0;
+%     beta(i,:) = linspace(betaMin_i, betaMax_i, numPts);
+%     % and into the full state trajectory, where the third coordinate is
+%     % rotation. Example, 4th body at 3b+2.
+%     xiAll(3*i, :) = beta(i, :);
+%     % increment for subsequent bodies.
+% %     nextMax = nextMax * sweepRatio;
+% %     nextMin = nextMin * sweepRatio;
+% end
 
 % Finally, do all the positions of the center (or, origin of local frame)
 % for the moving body.
