@@ -1,9 +1,11 @@
-%% particle_3d.m
+%% particle_3d_fourcable.m
 % Copyright Andrew P. Sabelhaus 2019
 
 % This script used the tIK library (rename later)
 % to calculate the equilibrium cable tensions for the viscoelastic control
 % law (Drew's dissertation work on dissipativity.)
+
+% This one has four cables arranged in a pyramid.
 
 %% set up the workspace
 clear all;
@@ -11,7 +13,11 @@ close all;
 clc;
 
 % add the core libraries, assumed to be in an adjacent folder.
-addpath( genpath('../invkin_core') );
+% 2019-07-11: Haven't yet implemented a refactored 3D library, so use the
+% old (messy) functions.
+% addpath( genpath('../invkin_core') );
+addpath( genpath('../../is_core/3d') );
+addpath( genpath('../../is_core/helper') );
 
 %% Set up the parameters
 

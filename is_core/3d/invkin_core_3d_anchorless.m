@@ -207,7 +207,9 @@ end
 
 % Call our parser to make some sense of out what happened
 if debugging >= 1
-    parse_qp_invkin_output(exitflag, output_info);
+%     parse_qp_invkin_output(exitflag, output_info);
+    % Summer 2019: refactoring...
+    parseISOresult(exitflag, output_info);
 end
 
 if debugging >= 2
