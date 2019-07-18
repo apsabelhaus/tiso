@@ -2,7 +2,7 @@
 % Copyright Andrew P. Sabelhaus 2018-2019
 
 % This script used the tiso libraries to solve the inverse statics
-% for a tensegrity spine, single vertebra, defined in 3 dimensions. 
+% for a tensegrity spine, b=2 bodies, defined in 3 dimensions. 
 % As the term is used here, 'spine'
 % refers to a structure with repeated rigid bodies of the same geometry and
 % mass.
@@ -12,8 +12,12 @@ clear all;
 close all;
 clc;
 
-% add the core libraries, assumed to be in an adjacent folder.
-addpath( genpath('../invkin_core') );
+% add the core libraries
+addpath( genpath('../../is_core/3d') );
+% and the helper functions
+addpath( genpath('../../is_core/helper') );
+% same for the plotting
+addpath( genpath('../../is_plot/3d') );
 
 %% Set up the parameters
 
@@ -25,11 +29,11 @@ debugging = 1;
 
 % Startup message if appropriate
 if debugging >= 1
-    disp('Starting horizontal spine 3D inverse kinematics example...');
+    disp('Starting horizontal spine 3D rigid body inverse statics example...');
 end
 
 % minimum cable force density
-q_min = 0; % units of N/m, depending on m and g
+qMin = 0.5; % units of N/m, depending on m and g
 
 % Local frame for one rigid body (locations of nodes)
 
@@ -49,82 +53,102 @@ if debugging >= 2
     a
 end
 
-% number of rigid bodies
-b= 2;
+% number of rigid bodies. Note this is number of MOVING bodies now!
+% so we have two vertebrae, but one is anchored, so b=1 moving.
+b= 1;
 % number of nodes
 n = size(a, 2) * b;
 
-% Configuration matrix for WHOLE STRUCTURE. (in future, pattern out.)
+% Configuration matrix. Split into source, sink, and body matrices for each
+% vertebra,
 
-% The nodes will be 1-5 = fixed vertebra, 6-10 = cantilevered vertebra
-% The configuration sub-matrix for the bars for one vert connects the
-% center node to all outer nodes
-Cv =   [1,      -1,     0,      0,      0;
-        1,      0,      -1,     0,      0;
-        1,      0,      0,      -1,     0;
-        1,      0,      0,      0,      -1];
-    
-% The cable connections have the vertical cables (nodes 2->7 ... 5->10)
-%           1   2   3   4   5   6   7   8   9   10
-Cc_vertical =  [0,  1,  0,  0,  0,  0, -1,  0,  0,  0;
-            0,  0,  1,  0,  0,  0,  0,  -1, 0,  0;
-            0,  0,  0,  1,  0,  0,  0,  0, -1,  0;
-            0,  0,  0,  0,  1,  0,  0,  0,  0, -1];
-            
-% The saddle cables connect nodes (fixed, moving): 4+2, 4+3, 5+2, 5+3
-% adjusting for the nodes on vert 2, that's 4+7, 4+8, 5+7, 5+8
-%           1   2   3   4   5   6   7   8   9   10
-Cc_saddle =[0,  0,  0,  1,  0,  0, -1,  0,  0,  0;
-            0,  0,  0,  1,  0,  0,  0, -1,  0,  0;
-            0,  0,  0,  0,  1,  0, -1,  0,  0,  0;
-            0,  0,  0,  0,  1,  0,  0, -1,  0,  0];      
+% source matrix
+Cso = [0 1 0 0 0;
+       0 0 1 0 0;
+       0 0 0 1 0;
+       0 0 0 0 1;
+       0 0 0 1 0;
+       0 0 0 1 0;
+       0 0 0 0 1;
+       0 0 0 0 1];
 
-% number of cables
-% s = 8;
-s = size(Cc_vertical, 1) + size(Cc_saddle, 1);
-% number of bars
-% r = 8;
-r = size(Cv, 1) * b;
-        
-% Finally, insert the sub-matrices block-structured into a full-size C.
-C = zeros(s + r, n);
-C(1:s, :) = [Cc_vertical; Cc_saddle];
-% rigid body connections are block-structured, so here's a shortcut with
-% kron.
-C(s+1 : end, :) = kron( eye(b), Cv);
+% sink matrix
+Csi = [0 -1 0 0 0;
+       0 0 -1 0 0;
+       0 0 0 -1 0;
+       0 0 0 0 -1;
+       0 -1 0 0 0;
+       0 0 -1 0 0;
+       0 -1 0 0 0;
+       0 0 -1 0 0];
+
+% vertebra matrix
+Crb = [1 -1 0 0 0;
+       1 0 -1 0 0;
+       1 0 0 -1 0;
+       1 0 0 0 -1];
+   
+% Get the full connectivity matrix.
+% NOTE HERE that though we'll be removing the leftmost vertebra later, we
+% still need its connectivity matrix blocks, so number of bodies is
+% actually b+1.
+
+C = get_C(Cso, Csi, Crb, b+1);
+
+
+% Need to specify number of cables, to split up C.
+% Cables per pair of bodies is number in source (or sink, equivalently)
+sigma = size(Cso, 1);
+% and there is one pair of cables per moving body,
+s = sigma * b;
+
+% r follows directly, it's the remainder number of rows.
+r = size(C,1) - s;
+% ...because C is \in R^{10 x 8}.
+
+% later, we will need number of nodes per body. Could get num col of any of
+% the submatrices here
+eta = size(Cso, 2);
+
+% number of nodes
+n = size(C, 2);
 
 if debugging >= 2
     C
 end
 
-% Pinned-node configuration vector: specifies which nodes are pinned joints.
-% \in n x 1, where == 1 if pinned and == 0 if free.
-
-% there are n nodes
-pinned = zeros(n, 1);
-
-% it's assumed that the fixed vertebra is built-in. Shouldn't really matter
-% which of nodes 1-5 are pinned, since we don't really care about the
-% reaction forces / forces inside the rigid bodies' members, so maybe we
-% should check in the future if this makes a difference.
-% for now, let's say all "outer" nodes are fixed.
-%pinned( 2:5 ) = 1;
-
-% four reaction forces sets was too many degrees of freedom. Instead, only
-% pin nodes 2 and 3, with the center pinned now also.
-% (note, the linear algebra didn't work out with just nodes 2 and 3, rank
-% issues.)
-pinned( 1:3 ) = 1;
-
 % gravitational constant
 g = 9.81;
 
-% vector of masses of each node
-% let's say each vertebra weighs 0.8 kg. Thta's about 1.7 lbs, which seems
-% right to Drew if motors are included.
-m_i = 0.8;
-% INCORRECT: not dividing. To-Do: what convention to adopt here?
-m = m_i * ones(n, 1);
+% Mass of a single vertebra
+% On 2019-07-18, the middle vertebrae are very light, 100g.
+% To-do: estimates from Solidworks about mass of shoulders and hips.
+mBody = 0.1;
+
+% mass per nodes according to vertebra body
+mNode = mBody/eta;
+
+% and in vector form,
+m = ones(n, 1) * mNode;
+
+% Example of how to do the 'anchored' analysis.
+% Declare a vector w \in R^n, 
+% where w(i) == 1 if the node should be 'kept'.
+% For this example, want to treat body 1 as the anchored nodes.
+% So, we zero-out anchored nodes 1 through 5, and keep nodes 6-10
+% (which is vertebra two.)
+% w = [0; 0; 0; 0; 0; 1; 1; 1; 1; 1];
+
+% For a b-body structure that removes the leftmost set of nodes,
+% zeros for the first body's nodes, ones for the remainder.
+w = [zeros(eta, 1); 
+     kron(ones(b,1), ones(eta, 1))];
+
+% Including all nodes:
+% w = ones(n,1);
+
+% IMPORTANT! If chosing to remove nodes, must change 'b' also, or else the
+% iso optimization problem will FAIL.
 
 %% Trajectory of positions
 
@@ -164,62 +188,64 @@ end
 
 % The nodal coordinates (x, y, z)
 % calculate from position trajectory
-coordinates = get_node_coordinates_3d(a, xi, debugging);
+coord = getCoord_3d(a, xi, debugging);
 
 if debugging >= 2
-    coordinates
+    coord
 end
-
-% Reaction forces
-% Using the nodal positions, pinned-node configuration vector, and mass
-% vector. 
-% Outputs px, py, pz. *THIS ASSUMES ACTING IN GRAVITY in -Z.
-
-[px, py, pz] = get_reaction_forces_3d(coordinates, pinned, m, g, debugging);
-
-% Add the gravitational reaction forces for each mass.
-for i=1:n
-    pz(i) = pz(i) - m(i)*g;
-end
-
-%% Solve the inverse kinematics problem
-% invkin_core_3d(x, y, z, px, py, pz, C, s, q_min, debugging}
 
 % Split up the coordinates.
-% The invkin core routine expects these to be column vectors, so a
+% The tiso core routine expects these to be column vectors, so a
 % transpose is needed also
-x = coordinates(1, :)';
-y = coordinates(2, :)';
-z = coordinates(3, :)';
+x = coord(1, :)';
+y = coord(2, :)';
+z = coord(3, :)';
+
+% Initialize external forces
+px = zeros(n, 1);
+py = zeros(n, 1);
+pz = zeros(n, 1);
+
+% Add the gravitational reaction forces for each mass.
+% a slight abuse of MATLAB's notation: this is vector addition, no indices
+% needed, since py and m are \in R^n.
+pz = pz - m*g;
+
+% % Add the gravitational reaction forces for each mass.
+% for i=1:n
+%     pz(i) = pz(i) - m(i)*g;
+% end
+
+% The objective function weighting matrix, via the helper(s).
+% For 0.5 q_s'*R*q_s
+R = getObj_2norm(s);
+
+%% Solve the inverse statics problem
+% invkin_core_3d(x, y, z, px, py, pz, C, s, q_min, debugging}
+
+% % The struct that contains all mandatory inputs to the ISO problem
+mandInputs.x = x;
+mandInputs.y = y;
+mandInputs.z = z;
+mandInputs.px = px;
+mandInputs.py = py;
+mandInputs.pz = pz;
+mandInputs.C = C;
+mandInputs.b = b;
+mandInputs.s = s;
+
+% The optional inputs
+optionalInputs.w = w;
+optionalInputs.R = R;
+optionalInputs.qMin = qMin;
+optionalInputs.debugging = debugging;
 
 % Solve
-[f_opt, q_opt, A, p] = invkin_core_3d(x, y, z, px, py, pz, C, s, q_min, debugging);
+% [f_opt, q_opt, A, p] = invkin_core_3d(x, y, z, px, py, pz, C, s, q_min, debugging);
+[fOpt, qOpt, len, ~, ~] = rbISO_3d(mandInputs, optionalInputs);
 
-% For this particular problem, we get the same rank issues as with the 2D
-% structure described in the Sabelhaus 2018 paper on MPC with inverse
-% kinematics: i.e., that since there are 10 nodes and 3 dimensions (nd =
-% 30) whereas there are only 16 members (8 cables, 4 rods per body * 2
-% bodies), the A matrix is overconstrained (30 rows, 16 columns) and no
-% solutions exist.
-
-% In addition, the reduction of this problem to the rigid body model
-% where instead the required A q = p has only 2bd columns (both force and
-% moment for b bodies in 3 dimensions) which here is 12, but only cable
-% forces are considered (s=8), still would have dimensionality issues: 
-% 12 > 8, so that wouldn't necessarily work either.
-
-% The best solution here is to allow for a set of "anchor" points where
-% forces are not considered, and that only provide the coordinates for the
-% force density vector, so that the fixed rigid body is not considered at
-% all and its reaction forces don't need to be calculated. This would lead
-% to an A q = p of (in rigid body form) 8 cables and 6 constraints (force
-% moment in 3d), with the cable force densities just specified by a
-% constant.
-
-% As of 2018-07-24, such an algorithm has not been developed. It's present
-% somewhat in the results from the Friesen 2014 paper although is not
-% discussed at all. TO-DO: implement this.
-
+% Plot
+plotTensegrity3d(C, s, diag(w), x, y, z);
 
 
 

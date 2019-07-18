@@ -166,6 +166,8 @@ m = ones(n, 1) * mNode;
 
 % For a b-body structure that removes the leftmost set of nodes,
 % zeros for the first body's nodes, ones for the remainder.
+
+%%%%%%%%%%%%%%%%%%%%%% 2019-07-18: POSSIBLE BUG. Should this be eta?
 w = [zeros(sigma, 1); 
      kron(ones(b,1), ones(sigma, 1))];
 

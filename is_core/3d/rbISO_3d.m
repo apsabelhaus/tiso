@@ -1,13 +1,10 @@
-%% rbISO_2d.m
-% Copyright Andrew P. Sabelhaus 2019
+%% rbISO_3d.m
+% Copyright Andrew P. Sabelhaus and Albert Li 2019
 
-% Older function declaration:
-% function [fOpt, qOpt, lengths, Ab, pb] = rbISO_2d(x, y, px, py, w, C, R, s, b, qMin, debugging)
-
-function [fOpt, qOpt, lengths, Ab, pb] = rbISO_2d(mandInputs, varargin)
-%% rbISO_2d  
-% rbISO_2d performs an inverse statics optimziation for a single pose of a
-% 2-dimensional tensegrity structure (robot), using the reformulated
+function [fOpt, qOpt, lengths, Ab, pb] = rbISO_3d(mandInputs, varargin)
+%% rbISO_3d  
+% rbISO_3d performs an inverse statics optimziation for a single pose of a
+% 3-dimensional tensegrity structure (robot), using the reformulated
 % rigid body (rb) force/moment balance.
 %
 %   *IMPORANT:* This script currently only is valid under the following
@@ -35,18 +32,15 @@ function [fOpt, qOpt, lengths, Ab, pb] = rbISO_2d(mandInputs, varargin)
 %   mandInputs: a struct of inputs to the problem that are MANDATORY. These
 %       specifically include:
 %
-%           x, y = the x, and y positions of each node in the structure. Must
+%           x, y, z = the x, y, and z positions of each node in the structure. Must
 %               be the same dimension. Cartesian frame.
-%               Note, in two dimensions, y is "up" e.g. gravity works in -y.
-%               This is so that a right-handed coordinate frame still makes sense
-%               in 2D.
+%               Note, in three dimensions, z is "up" e.g. gravity works in -z.
 %
-%           px, py = vectors of external forces, applied to each node (has the same
-%               dimension as x, y.)
+%           px, py, pz = vectors of external forces, applied to each node (has the same
+%               dimension as x, y, z.)
 %
 %           C = configuration matrix for the structure. See literature for
 %               definition.
-%
 %
 %           s = number of cables (tension-only members in the system.) This is
 %               required to pose the optimization program such that no cables "push."
@@ -99,7 +93,7 @@ function [fOpt, qOpt, lengths, Ab, pb] = rbISO_2d(mandInputs, varargin)
 %
 %   qOpt = optimal force densities, corresponding to fOpt
 %
-%   lengths = lengths of each cable, as specified via C and {x,y}. This
+%   lengths = lengths of each cable, as specified via C and {x,y,z}. This
 %       could be calc'd elsewhere since it doesn't actually depend on the
 %       output of quadprog, but it's useful to return for calculating u
 %       from q* in the caller.
@@ -123,16 +117,18 @@ end
 % validate each way. This is so that we don't pass to validate_2d a cell
 % array of size one, containing one empty cell array.
 if hasOI
-    validate_2d(mandInputs, optionalInputs);
+    validate_3d(mandInputs, optionalInputs);
 else
-    validate_2d(mandInputs);
+    validate_3d(mandInputs);
 end
 
 % Assuming validation works, expand out mandatory arguments
 x = mandInputs.x;
 y = mandInputs.y;
+z = mandInputs.z;
 px = mandInputs.px;
 py = mandInputs.py;
+pz = mandInputs.pz;
 C = mandInputs.C;
 s = mandInputs.s;
 b = mandInputs.b;
@@ -195,7 +191,7 @@ end
 %% Startup message.
 
 if debugging >= 1
-    disp('Starting rbISO_2d (inverse statics optimization, two dimensions, rigid body reformulation)...');
+    disp('Starting rbISO_3d (inverse statics optimization, three dimensions, rigid body reformulation)...');
 end
 
 %% First, formulate the constants / parameters for the optimization:
@@ -223,8 +219,8 @@ if debugging >= 1
 end
 
 % For later work, generalize: this is the dimensionality of the problem
-% (2 dimensional.)
-d = 2;
+% (3 dimensional.)
+d = 3;
 
 % First, let's create the A matrix.
 
@@ -242,13 +238,13 @@ d = 2;
 
 % Helper matrix:
 H = get_H(s, r);
-
+ 
 % ...when multiplied by a vector of all cables, removes the bars:
 % q_s = H^\top q.
 % Equivalently, H will right-multiply the A matrices to remove the bars.
 
 % For later, calculate the lengths.
-lengths = getLen_2d(x, y, s, C);
+lengths = getLen_3d(x, y, z, s, C);
 
 % A matrix to pattern out the collapsation.
 % We could do ones(1, eta) but all Drew's papers use the 'ones' as a column
@@ -258,7 +254,8 @@ K = kron(eye(d*b), ones(eta, 1)');
 % As in the standard force-density method, calculate the static equilibrium
 % matrix:
 A = [ C' * diag(C * x);
-      C' * diag(C * y)];
+      C' * diag(C * y);
+      C' * diag(C * z)];
   
 % ANCHORS FORMULATION:
 % For using the anchors-formulation (removing the anchors from the
@@ -271,7 +268,7 @@ W(~any(W,2), :) = [];
 
 % This W takes out the anchors for one dimension.
 % To do it in multiple dimensions, pattern it out.
-Wf = kron(eye(2), W);
+Wf = kron(eye(d), W);
 
 % We can now remove the rows from A.
 % This is done "before" the rigid body reformulation,
@@ -279,7 +276,7 @@ Wf = kron(eye(2), W);
 % are "in a row" in terms of labeling order, etc.
 Aw = Wf * A;
   
-% The Af matrix can then be collapsed to size (2b x s) from size (2n x
+% The Af matrix can then be collapsed to size (db x s) from size (dn x
 % (s+r))
 Af = K * Aw * H; 
 % Af = K * Aw * H_hat'; 
@@ -302,7 +299,7 @@ if debugging >= 2
 end
   
 % Combine the p vector
-p = [px; py];
+p = [px; py; pz];
 
 % We need to remove the not-used nodes from the external balance now too.
 % The Wf matrix works the same way here (nicely same dimensions.)
@@ -314,16 +311,8 @@ pf = K * pw;
 
 % The moment balance: 
 % We can sum around the origin, and then remove rows similarly to Aw.
-% For example, for the moments due to external forces, we do something
-% like:
-% M_ext = det([x, y; Fx, Fy])
-%       = x*Fy - y*Fx
-% where x and y are the node positions at which [Fx, Fy] act.
-% This is equivalent to multiplying the p vector by the matrix:
-B = [-diag(y), diag(x)];
-
-% the B matrix is \in \mathbb{R}^(n, 2n} since we're only doing moment
-% balance in the Z direction.
+% Using the helper function,
+B = getB_3d(n, x, y, z);
 
 % The moments from the total external force at each node are:
 % (this vector is size n, since we only have one total moment at each node,
@@ -333,18 +322,8 @@ p_moments = B * p;
 % Then collapse down according to (a) removing anchors and (b) rigid body
 % reformulation.
 
-% What's the 'collapse' matrix to use here? It's different dimensions.
-% Need to sum according to eta, but x and y are combined, so should be
-% half the number of columns (only n nodes, not 2n) and half the number of
-% rows (only summing in Z for each body, not summing and X and Y for each
-% body)
-% It would then be
-Km = kron(eye(b), ones(eta, 1)');
-
-% The moment contribution from external forces should be size b x 1,
-% one sum moment in Z for each rigid body.
-% We also need to remove the anchors, as with the force balance.
-pm = Km * W * p_moments;
+% Using the same K as above,
+pm = K * Wf * p_moments;
 
 % For the collapsation of the forces on the lefthand side, due to the
 % cables, we perform exactly the same operation. 
@@ -353,16 +332,14 @@ pm = Km * W * p_moments;
 Am = B * A;
 
 % Then remove the bars, and collapse it down to one moment balance.
-% This leaves a matrix of size b x s.
-% Am = Km * W * Am * H_hat';
-Am = Km * W * Am * H;
+Am = K * Wf * Am * H;
 
 % finally, can concatenate the force balance with the moment balance.
 Ab = [Af; Am];
 pb = [pf; pm];
 
 if debugging >= 2
-    disp('Size of x, r, C, Ab, pb is:');
+    disp('n, r, C, Ab, pb is:');
     n
     r
     size(C)
@@ -409,7 +386,7 @@ end
 % constrained to inequality constrained.
 
 if debugging >= 2
-    disp('Solving the inverse statics problem for a 2D tensegrity structure...');
+    disp('Solving the inverse statics problem for a 3D tensegrity structure...');
 end
 
 % quadprog's arguments are

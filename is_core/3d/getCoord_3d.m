@@ -1,7 +1,7 @@
-% get_node_coordinates_3d.m
+% getCoord_3d.m
 % Copyright Andrew P. Sabelhaus
 
-function [coordinates] = get_node_coordinates_3d(local_frame, state, debugging)
+function [coordinates] = getCoord_3d(localFrame, state, debugging)
 % get_node_coordinates calculates the coordinates (positions) of each node
 %   for the whole tensegrity structure. For more than 1 rigid body, the
 %   'state' vector implies how many times to copy/translate/rotate the
@@ -27,7 +27,7 @@ function [coordinates] = get_node_coordinates_3d(local_frame, state, debugging)
 
 % The parameters are
 b = size(state,1) / 6;
-n_i = size(local_frame, 2);
+n_i = size(localFrame, 2);
 
 if debugging >= 2
     b
@@ -42,7 +42,7 @@ for i = 1:b
     % for ease, split off the state for this rigid body
     state_i = state(6*(i-1) + 1 : 6*i);
     if debugging >= 2
-        state
+        state_i
     end
     % The nodes are at the new xyz coordinates + rotation on the original
     % frame. Rotation matrices are ordered z, y, x
@@ -65,7 +65,7 @@ for i = 1:b
     end
 
     % apply all the rotations
-    rotated_frame = rot_z * rot_y * rot_x * local_frame;
+    rotated_frame = rot_z * rot_y * rot_x * localFrame;
     
     if debugging >= 2
         rotated_frame

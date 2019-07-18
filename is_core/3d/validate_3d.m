@@ -1,21 +1,18 @@
 % Andrew P. Sabelhaus and Albert H. Li, 2019
 
-function validate_2d(mi, varargin)
-%% validate_2d
+function validate_3d(mi, varargin)
+%% validate_3d
 %
 %   Validates the inputs passed into an ISO problem.
 %   ****As of June 2019: works for rigid body reformulation ONLY.
    
 %% extracting mandatory inputs:
    
-%           x, y = the x, and y positions of each node in the structure. Must
+%           x, y, z = the x, and y, z positions of each node in the structure. Must
 %               be the same dimension. Cartesian frame.
-%               Note, in two dimensions, y is "up" e.g. gravity works in -y.
-%               This is so that a right-handed coordinate frame still makes sense
-%               in 2D.
 %
-%           px, py = vectors of external forces, applied to each node (has the same
-%               dimension as x, y.)
+%           px, py, pz = vectors of external forces, applied to each node (has the same
+%               dimension as x, y, z.)
 %
 %           C = configuration matrix for the structure. See literature for
 %               definition.
@@ -37,8 +34,10 @@ end
 
 x = mi.x;
 y = mi.y;
+z = mi.z;
 px = mi.px;
 py = mi.py;
+pz = mi.pz;
 C = mi.C;
 s = mi.s;
 b = mi.b;
@@ -66,11 +65,17 @@ if n ~= size(x, 1)
 elseif n ~= size(y, 1)
     error('Error: the C matrix and the y vector (node positions in y) have a different number of nodes. Cannot continue.');
     
+elseif n ~= size(z, 1)
+    error('Error: the C matrix and the z vector (node positions in z) have a different number of nodes. Cannot continue.');
+    
 elseif n ~= size(px, 1)
     error('Error: the C matrix and the px vector (node external rxn. forces in x) have a different number of nodes. Cannot continue.');
     
 elseif n ~= size(py, 1)
     error('Error: the C matrix and the py vector (node external rxn. forces in y) have a different number of nodes. Cannot continue.');
+    
+elseif n ~= size(pz, 1)
+    error('Error: the C matrix and the pz vector (node external rxn. forces in z) have a different number of nodes. Cannot continue.');
 
 % Also check that each of these are a column vector.
 elseif size(x, 2) ~= 1
@@ -79,11 +84,17 @@ elseif size(x, 2) ~= 1
 elseif size(y, 2) ~= 1
     error('Error: y is not a column vector. Cannot continue.');
     
+elseif size(z, 2) ~= 1
+    error('Error: z is not a column vector. Cannot continue.');
+    
 elseif size(px, 2) ~= 1
     error('Error: px is not a column vector. Cannot continue.');
     
 elseif size(py, 2) ~= 1
     error('Error: py is not a column vector. Cannot continue.');
+    
+elseif size(pz, 2) ~= 1
+    error('Error: pz is not a column vector. Cannot continue.');
     
 end
 
