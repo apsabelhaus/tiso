@@ -1,4 +1,4 @@
-%% horizSpineISMultiVert_2d.m
+%% horizSpineMultiVert_2d.m
 % Copyright Andrew P. Sabelhaus 2019
 
 % This script used the tiso libraries to solve the inverse statics problem
@@ -18,7 +18,7 @@ addpath( genpath('../../is_core/helper') );
 % same for the plotting
 addpath( genpath('../../is_plot/2d') );
 % the trajectories are now in a subfolder
-addpath( genpath('is_state_traj_2d'));
+addpath( genpath('is_state_traj_2d') );
 
 %% Set up the parameters
 
