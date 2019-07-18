@@ -136,6 +136,7 @@ y = nodes(2, :)';
 z = nodes(3, :)';
 
 % Solve
+[fOpt, qOpt, Ab, pb] = rbISO_2d(mandInputs, optionalInputs);
 [f_opt, q_opt, A, p, lengths] = invkin_core_3d_anchorless(x, y, z, px, py, pz, C, s, q_min, anchors_vec, debugging);
 
 % Backing out the optimal inputs,

@@ -25,7 +25,7 @@ addpath( genpath('../../is_core/helper') );
 % same for the plotting
 addpath( genpath('../../is_plot/2d') );
 % and the input trajectories
-addpath( genpath('../is_state_traj') );
+addpath( genpath('is_state_traj_2d') );
 
 %% Set up the parameters
 
