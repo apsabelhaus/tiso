@@ -33,9 +33,11 @@ function [xiAll] = trajStraightMultiBody_3d(translation, rotation, b)
 % TO-DO: make this more extensible, not assuming there's exactly one body
 % anchored...
 xiAll = zeros(6*(b+1), 1);
+% the first vertebra is rotated too
+xiAll(4:6, 1) = rotation;
 
 % For each body,
-for k = 1:(b+1)
+for k = 1:b
     % This body's state is
     xi_k = zeros(6, 1);
     % translate it out by b
@@ -43,7 +45,7 @@ for k = 1:(b+1)
     % the rotation is the same for each body
     xi_k(4:6) = rotation;
     % plug in to the total state vector
-    xiAll(6*(k-1)+1 : 6*(k-1)+6, 1) = xi_k;
+    xiAll(6*k+1 : 6*k+6, 1) = xi_k;
 end
     
 end

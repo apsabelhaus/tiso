@@ -46,13 +46,22 @@ qMin = 3;
 % spine. Nodes are column vectors [x; y; z], but for ease, written as transposed
 % here.
 
+%%%%%%%%%%%%%%%%%% TO-DO: UPDATE FROM CAD
 bar_endpoint = 0.5; % meters. 50 cm.
 
-a = [   0,              0,              0;
-        bar_endpoint,     0,              -bar_endpoint;
+% This is for the "vertical" spine
+% a = [   0,              0,              0;
+%         bar_endpoint,     0,              -bar_endpoint;
+%         -bar_endpoint,    0,              -bar_endpoint;
+%         0,              bar_endpoint,     bar_endpoint;
+%         0,              -bar_endpoint,    bar_endpoint]';
+
+% This is for the "horizontal" spine
+a = [   0,                0,              0;
         -bar_endpoint,    0,              -bar_endpoint;
-        0,              bar_endpoint,     bar_endpoint;
-        0,              -bar_endpoint,    bar_endpoint]';
+        -bar_endpoint,    0,              bar_endpoint;
+        bar_endpoint,     bar_endpoint,   0;
+        bar_endpoint,    -bar_endpoint,   0]';    
     
 if debugging >= 2
     a
@@ -188,7 +197,10 @@ translation = [ bar_endpoint * (3/4);
                 0];
 
 % rotation is just local rotation for each vertebra
-rotation = [0; pi/2; 0];
+% For the vertical spine rotating to horizontal:
+% rotation = [0; pi/2; 0];
+% For the vertebra that has a manually rotated a frame
+rotation = [0; 0; 0];
 
 % get the traj for all vertebrae
 xi = trajStraightMultiBody_3d(translation, rotation, b);
