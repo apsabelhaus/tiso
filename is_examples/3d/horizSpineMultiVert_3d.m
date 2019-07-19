@@ -27,7 +27,7 @@ addpath( genpath('is_state_traj_3d') );
 % 0 = no output except for errors
 % 1 = Starting message, results from quadprog
 % 2 = Verbose output of status.
-debugging = 1;
+debugging = 2;
 
 % Startup message if appropriate
 if debugging >= 1
@@ -69,7 +69,8 @@ end
 
 % number of rigid bodies. Note this is number of MOVING bodies now!
 % so we have five vertebrae, 4 moving.
-b= 4;
+% b= 4;
+b = 2;
 % number of nodes
 n = size(a, 2) * b;
 
@@ -225,6 +226,17 @@ end
 x = coord(1, :)';
 y = coord(2, :)';
 z = coord(3, :)';
+
+% A test: calculate the external reaction forces if certain nodes are
+% pinned. That would be 4 and 5 for the left vertebra, and maybe for
+% example these same on the 3rd vertebra, which are 14 and 15
+pinned = zeros(n,1);
+pinned(4) = 1;
+pinned(5) = 1;
+pinned(14) = 1;
+pinned(15) = 1;
+
+[rx, ry, rz] = getFrictionlessRxn_3d(x, y, z, pinned, m, g, debugging);
 
 % Initialize external forces
 px = zeros(n, 1);
