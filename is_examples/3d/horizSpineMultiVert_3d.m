@@ -227,33 +227,37 @@ x = coord(1, :)';
 y = coord(2, :)';
 z = coord(3, :)';
 
-% A test: calculate the external reaction forces if certain nodes are
-% pinned. That would be 4 and 5 for the left vertebra, and maybe for
-% example these same on the 3rd vertebra, which are 14 and 15
-pinned = zeros(n,1);
-pinned(4) = 1;
-pinned(5) = 1;
-pinned(14) = 1;
-pinned(15) = 1;
-
-% Enforce that the front legs are same and back legs are same
-% (see getFrictionlessRxnSymmetric_3d for description of this matrix)
-% two constraints
-symmetric = zeros(2, n);
-% front legs
-symmetric(1, 4) = 1;
-symmetric(1, 5) = -1;
-% back legs
-symmetric(2, 14) = 1;
-symmetric(2, 15) = -1;
+% % A test: calculate the external reaction forces if certain nodes are
+% % pinned. That would be 4 and 5 for the left vertebra, and maybe for
+% % example these same on the 3rd vertebra, which are 14 and 15
+% pinned = zeros(n,1);
+% pinned(4) = 1;
+% pinned(5) = 1;
+% pinned(14) = 1;
+% pinned(15) = 1;
+% 
+% % Enforce that the front legs are same and back legs are same
+% % (see getFrictionlessRxnSymmetric_3d for description of this matrix)
+% % two constraints
+% symmetric = zeros(2, n);
+% % front legs
+% symmetric(1, 4) = 1;
+% symmetric(1, 5) = -1;
+% % back legs
+% symmetric(2, 14) = 1;
+% symmetric(2, 15) = -1;
 
 % [rx, ry, rz] = getFrictionlessRxn_3d(x, y, z, pinned, m, g, debugging);
-[rx, ry, rz] = getFrictionlessRxnSymmetric_3d(x, y, z, pinned, m, g, symmetric, debugging);
+% [rx, ry, rz] = getFrictionlessRxnSymmetric_3d(x, y, z, pinned, m, g, symmetric, debugging);
 
 % Initialize external forces
 px = zeros(n, 1);
 py = zeros(n, 1);
 pz = zeros(n, 1);
+
+% px = rx;
+% py = ry;
+% pz = rz;
 
 % Add the gravitational reaction forces for each mass.
 % a slight abuse of MATLAB's notation: this is vector addition, no indices

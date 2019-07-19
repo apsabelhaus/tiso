@@ -180,9 +180,33 @@ end
 R = A \ b;
 
 % and parse out into individual blocks.
-rx = R(1 : v);
-ry = R(v+1 : 2*v);
-rz = R(2*v+1 : 3*v);
+rx_v = R(1 : v);
+ry_v = R(v+1 : 2*v);
+rz_v = R(2*v+1 : 3*v);
+
+% However, now also need to broadcast back into "n", the nonzero positions
+% in the "pinned" vector.
+rx = zeros(n,1);
+ry = zeros(n,1);
+rz = zeros(n,1);
+% counting correlates v to n indexing
+count = 1;
+for i = 1:n
+    % If this is a pinned joint
+    if pinned(i) == 1
+        % then insert the next rx, ry, rz
+        rx(i) = rx_v(count);
+        ry(i) = ry_v(count);
+        rz(i) = rz_v(count);
+        % and increment to the next of the pinned joints
+        count = count + 1;
+    end
+end
+
+% Check: should have count == (v+1) at the end, inserted exactly all forces
+if count ~= (v+1)
+    error('Error! For some reason, could not re-insert reaction forces.');
+end
 
 if( debugging >= 2 )
     disp('Reaction force solutions from getFrictionlessRxn_3d are:');
