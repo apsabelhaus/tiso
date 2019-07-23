@@ -1,10 +1,9 @@
 % Andrew P. Sabelhaus, 2019
 % heavily adapted from Jeff Friesen's cylinder2P.
 
-function [x, y, z] = getSurfPts2d(radius, radDiscr, ...
+function [x, y, z] = getSurfPts(radius, radDiscr, ...
                         lengthDiscr, startPt, endPt)
-%getSurfPts2d Calculate points for a surf of a bar for a 2D
-%tensegrity
+%getSurfPts Calculate points for a surf of a bar for a tensegrity
 %
 %   This function calculates and returns a set of x, y, z points that can
 %   be passed into 'surf' to create a cylinder. In this case, it's used for

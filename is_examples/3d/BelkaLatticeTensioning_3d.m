@@ -1,11 +1,9 @@
-%% horizSpineExample_3d.m
+%% BelkaLatticeTensioning_3d.m
 % Copyright Andrew P. Sabelhaus 2018-2019
 
-% This script used the tiso libraries to solve the inverse statics
-% for a tensegrity spine, b=2 bodies, defined in 3 dimensions. 
-% As the term is used here, 'spine'
-% refers to a structure with repeated rigid bodies of the same geometry and
-% mass.
+% This script used the tiso libraries to calculate cable tensions for a
+% desired pose of the Belka quadruped robot, consisting of a tensegrity
+% spine with a set of legs.
 
 %% set up the workspace
 clear all;
@@ -19,6 +17,8 @@ addpath( genpath('../../is_core/helper') );
 % same for the plotting
 addpath( genpath('../../is_plot/3d') );
 addpath( genpath('../../is_plot/helper') );
+% the trajectories are now in a subfolder
+addpath( genpath('is_state_traj_3d') );
 
 %% Set up the parameters
 
@@ -26,15 +26,18 @@ addpath( genpath('../../is_plot/helper') );
 % 0 = no output except for errors
 % 1 = Starting message, results from quadprog
 % 2 = Verbose output of status.
-debugging = 1;
+debugging = 2;
 
 % Startup message if appropriate
 if debugging >= 1
-    disp('Starting horizontal spine 3D rigid body inverse statics example...');
+    disp('Starting Belka lattice tensioning via inverse statics optimization...');
 end
 
 % minimum cable force density
-qMin = 0.5; % units of N/m, depending on m and g
+% qMin = 0.5; % units of N/m, depending on m and g
+% Putting a higher pretension sometimes helps give consistent bounds on cables and
+% prevents too many with different forces.
+qMin = 3;
 
 % Local frame for one rigid body (locations of nodes)
 
@@ -42,21 +45,31 @@ qMin = 0.5; % units of N/m, depending on m and g
 % spine. Nodes are column vectors [x; y; z], but for ease, written as transposed
 % here.
 
+%%%%%%%%%%%%%%%%%% TO-DO: UPDATE FROM CAD
 bar_endpoint = 0.5; % meters. 50 cm.
 
-a = [   0,              0,              0;
-        bar_endpoint,     0,              -bar_endpoint;
+% This is for the "vertical" spine
+% a = [   0,              0,              0;
+%         bar_endpoint,     0,              -bar_endpoint;
+%         -bar_endpoint,    0,              -bar_endpoint;
+%         0,              bar_endpoint,     bar_endpoint;
+%         0,              -bar_endpoint,    bar_endpoint]';
+
+% This is for the "horizontal" spine
+a = [   0,                0,              0;
         -bar_endpoint,    0,              -bar_endpoint;
-        0,              bar_endpoint,     bar_endpoint;
-        0,              -bar_endpoint,    bar_endpoint]';
+        -bar_endpoint,    0,              bar_endpoint;
+        bar_endpoint,     bar_endpoint,   0;
+        bar_endpoint,    -bar_endpoint,   0]';    
     
 if debugging >= 2
     a
 end
 
 % number of rigid bodies. Note this is number of MOVING bodies now!
-% so we have two vertebrae, but one is anchored, so b=1 moving.
-b= 1;
+% so we have five vertebrae, 4 moving.
+% b= 4;
+b = 3;
 % number of nodes
 n = size(a, 2) * b;
 
@@ -94,18 +107,18 @@ Crb = [1 -1 0 0 0;
 % still need its connectivity matrix blocks, so number of bodies is
 % actually b+1.
 
-C = get_C(Cso, Csi, Crb, b+1);
+C = get_C(Cso, Csi, Crb, b);
 
 
 % Need to specify number of cables, to split up C.
 % Cables per pair of bodies is number in source (or sink, equivalently)
 sigma = size(Cso, 1);
-% and there is one pair of cables per moving body,
-s = sigma * b;
+% and there is one pair of cables between each moving body, meaning (for
+% example) two sets of cables for three bodies, so b-1 here
+s = sigma * (b-1);
 
 % r follows directly, it's the remainder number of rows.
 r = size(C,1) - s;
-% ...because C is \in R^{10 x 8}.
 
 % later, we will need number of nodes per body. Could get num col of any of
 % the submatrices here
@@ -142,45 +155,35 @@ m = ones(n, 1) * mNode;
 
 % For a b-body structure that removes the leftmost set of nodes,
 % zeros for the first body's nodes, ones for the remainder.
-w = [zeros(eta, 1); 
-     kron(ones(b,1), ones(eta, 1))];
+% w = [zeros(eta, 1); 
+%      kron(ones(b,1), ones(eta, 1))];
 
 % Including all nodes:
-% w = ones(n,1);
+% this will be done with Belka since we're calculating reaction forces at
+% the feet
+w = ones(n,1);
 
 % IMPORTANT! If chosing to remove nodes, must change 'b' also, or else the
 % iso optimization problem will FAIL.
 
 %% Trajectory of positions
-
-% all the positions of each rigid body (expressed as their COM positions
-% and Euler angles). that's 6 states: [x; y; z; \theta, \gamma, \phi] with
-% the angles being intrinsic rotations (y p r).
-
-% use \xi for the system states.
-xi = zeros(b * 6, 1);
-
-% for rigid body 1, the fixed one, doesn't move. However, we've defined it
-% in its "vertical" state, so it needs to be rotated by 90 degrees around
-% the y-axis so the saddle cables can align. Let's rotate it counterclockwise so
-% that nodes 4 and 5 are in +x.
-xi(4:6) = [0; pi/2; 0];
-
-% for rigid body 2, translate out in the +x direction. Translating by one
-% full body length puts the tips exactly in the same plane, so maybe do it
-% to 3/4 of that length.
-% the length of one vert is bar_endpoint. 
-% x-position is coordinate 1.
-xi(7:12) = [    bar_endpoint * (3/4);
+             
+% translate the vertebrae out along one axis
+translation = [ bar_endpoint * (3/4);
                 0;
-                0;
-                0; % angles start here
-                pi/2;
                 0];
-            
-% Let's translate and rotate the moving vertebra 'up' a bit, to check. 
-% That's 
-            
+
+% rotation is just local rotation for each vertebra
+% For the vertical spine rotating to horizontal:
+% rotation = [0; pi/2; 0];
+% For the vertebra that has a manually rotated a frame
+rotation = [0; 0; 0];
+
+% get the traj for all vertebrae
+% As of 2019-07-23, this generates "b" bodies AFTER the initial one at
+% zero, so need b-1 for all bodies included here.
+xi = trajStraightMultiBody_3d(translation, rotation, b-1);
+
 if debugging >= 2
     xi
 end
@@ -202,10 +205,33 @@ x = coord(1, :)';
 y = coord(2, :)';
 z = coord(3, :)';
 
+% A test: calculate the external reaction forces if certain nodes are
+% pinned. That would be 4 and 5 for the left vertebra, and maybe for
+% example these same on the 3rd vertebra, which are 14 and 15
+pinned = zeros(n,1);
+pinned(4) = 1;
+pinned(5) = 1;
+pinned(14) = 1;
+pinned(15) = 1;
+
+% Enforce that the front legs are same and back legs are same
+% (see getFrictionlessRxnSymmetric_3d for description of this matrix)
+% two constraints
+symmetric = zeros(2, n);
+% front legs
+symmetric(1, 4) = 1;
+symmetric(1, 5) = -1;
+% back legs
+symmetric(2, 14) = 1;
+symmetric(2, 15) = -1;
+
+% [rx, ry, rz] = getFrictionlessRxn_3d(x, y, z, pinned, m, g, debugging);
+[rx, ry, rz] = getFrictionlessRxnSymmetric_3d(x, y, z, pinned, m, g, symmetric, debugging);
+
 % Initialize external forces
-px = zeros(n, 1);
-py = zeros(n, 1);
-pz = zeros(n, 1);
+px = rx;
+py = ry;
+pz = rz;
 
 % Add the gravitational reaction forces for each mass.
 % a slight abuse of MATLAB's notation: this is vector addition, no indices
@@ -242,13 +268,13 @@ optionalInputs.qMin = qMin;
 optionalInputs.debugging = debugging;
 
 % Solve
-% [f_opt, q_opt, A, p] = invkin_core_3d(x, y, z, px, py, pz, C, s, q_min, debugging);
 [fOpt, qOpt, len, ~, ~] = rbISO_3d(mandInputs, optionalInputs);
 
 % Plot
 rad = 0.02;
 labelsOn = 1;
 plotTensegrity3d(C, x, y, z, s, rad, labelsOn);
+
 
 
 

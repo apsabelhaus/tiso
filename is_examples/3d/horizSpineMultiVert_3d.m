@@ -18,6 +18,7 @@ addpath( genpath('../../is_core/3d') );
 addpath( genpath('../../is_core/helper') );
 % same for the plotting
 addpath( genpath('../../is_plot/3d') );
+addpath( genpath('../../is_plot/helper') );
 % the trajectories are now in a subfolder
 addpath( genpath('is_state_traj_3d') );
 
@@ -69,8 +70,7 @@ end
 
 % number of rigid bodies. Note this is number of MOVING bodies now!
 % so we have five vertebrae, 4 moving.
-% b= 4;
-b = 2;
+b = 4;
 % number of nodes
 n = size(a, 2) * b;
 
@@ -166,31 +166,6 @@ w = [zeros(eta, 1);
 % iso optimization problem will FAIL.
 
 %% Trajectory of positions
-
-% % all the positions of each rigid body (expressed as their COM positions
-% % and Euler angles). that's 6 states: [x; y; z; \theta, \gamma, \phi] with
-% % the angles being intrinsic rotations (y p r).
-% 
-% % use \xi for the system states.
-% xi = zeros(b * 6, 1);
-% 
-% % for rigid body 1, the fixed one, doesn't move. However, we've defined it
-% % in its "vertical" state, so it needs to be rotated by 90 degrees around
-% % the y-axis so the saddle cables can align. Let's rotate it counterclockwise so
-% % that nodes 4 and 5 are in +x.
-% xi(4:6) = [0; pi/2; 0];
-% 
-% % for rigid body 2, translate out in the +x direction. Translating by one
-% % full body length puts the tips exactly in the same plane, so maybe do it
-% % to 3/4 of that length.
-% % the length of one vert is bar_endpoint. 
-% % x-position is coordinate 1.
-% xi(7:12) = [    bar_endpoint * (3/4);
-%                 0;
-%                 0;
-%                 0; % angles start here
-%                 pi/2;
-%                 0];
              
 % translate the vertebrae out along one axis
 translation = [ bar_endpoint * (3/4);
@@ -227,37 +202,10 @@ x = coord(1, :)';
 y = coord(2, :)';
 z = coord(3, :)';
 
-% % A test: calculate the external reaction forces if certain nodes are
-% % pinned. That would be 4 and 5 for the left vertebra, and maybe for
-% % example these same on the 3rd vertebra, which are 14 and 15
-% pinned = zeros(n,1);
-% pinned(4) = 1;
-% pinned(5) = 1;
-% pinned(14) = 1;
-% pinned(15) = 1;
-% 
-% % Enforce that the front legs are same and back legs are same
-% % (see getFrictionlessRxnSymmetric_3d for description of this matrix)
-% % two constraints
-% symmetric = zeros(2, n);
-% % front legs
-% symmetric(1, 4) = 1;
-% symmetric(1, 5) = -1;
-% % back legs
-% symmetric(2, 14) = 1;
-% symmetric(2, 15) = -1;
-
-% [rx, ry, rz] = getFrictionlessRxn_3d(x, y, z, pinned, m, g, debugging);
-% [rx, ry, rz] = getFrictionlessRxnSymmetric_3d(x, y, z, pinned, m, g, symmetric, debugging);
-
 % Initialize external forces
 px = zeros(n, 1);
 py = zeros(n, 1);
 pz = zeros(n, 1);
-
-% px = rx;
-% py = ry;
-% pz = rz;
 
 % Add the gravitational reaction forces for each mass.
 % a slight abuse of MATLAB's notation: this is vector addition, no indices
@@ -298,7 +246,10 @@ optionalInputs.debugging = debugging;
 [fOpt, qOpt, len, ~, ~] = rbISO_3d(mandInputs, optionalInputs);
 
 % Plot
-plotTensegrity3d(C, s, diag(w), x, y, z);
+rad = 0.02;
+labelsOn = 1;
+plotTensegrity3d(C, x, y, z, s, rad, labelsOn);
+
 
 
 

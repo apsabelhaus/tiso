@@ -17,6 +17,7 @@ addpath( genpath('../../is_core/2d') );
 addpath( genpath('../../is_core/helper') );
 % same for the plotting
 addpath( genpath('../../is_plot/2d') );
+addpath( genpath('../../is_plot/helper') );
 
 %% Set up the parameters
 

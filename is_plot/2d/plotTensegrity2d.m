@@ -42,7 +42,7 @@ function handles = plotTensegrity2d( C, x, z, s, rad)
 %
 %   Depends:
 %
-%       getSurfPts2d, a function that calculates the inputs for
+%       getSurfPts, a function that calculates the inputs for
 %       surf to make a nice bar.
 %
 
@@ -169,7 +169,7 @@ for j=(s+1):(s+r)
     startPt = [x(fromIndex), z(fromIndex), 0];
     endPt = [x(toIndex), z(toIndex), 0];
     % Get the inputs for surf-ing this bar
-    [cylX, cylY, cylZ] = getSurfPts2d(rad, surfDiscr, ...
+    [cylX, cylY, cylZ] = getSurfPts(rad, surfDiscr, ...
                 surfLengthDiscr, startPt, endPt);
     % Finally, plot the bar.
     handles{end+1} = surf(gca, cylX, cylY, ...
