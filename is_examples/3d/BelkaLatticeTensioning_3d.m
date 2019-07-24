@@ -85,8 +85,13 @@ a = [   0,      0,    0;
 sh_w = 178 * 10^-3;
 sh_h = 275 * 10^-3;
 sh_d = 32 * 10^-3;
-sh_com_x = 39 * 10^-3;
-sh_com_z = 12 * 10^-3;
+
+% sh_com_x = 39 * 10^-3;
+% sh_com_z = 12 * 10^-3;
+% 2019-07-24: with the 3D print that Albert is doing, parts not quite
+% aligned yet, the CoM with respect to the shoulder enclosure has
+sh_com_x = 14 * 10^-3;
+sh_com_z = 8 * 10^-3;
 
 sh = [-sh_d,        0,      0;
       -sh_com_x,    0,      -sh_com_z;
@@ -274,20 +279,28 @@ C = [Cs; Cr];
 
 % Need to specify number of cables, to split up C.
 % Cables per pair of bodies is number in source (or sink, equivalently)
-sigma = size(Cso, 1);
+% sigma = size(Cso, 1);
 % and there is one pair of cables between each moving body, meaning (for
 % example) two sets of cables for three bodies, so b-1 here
-s = sigma * (b-1);
+% s = sigma * (b-1);
+
+% Number of cables is dimension of the Cs matrix.
+s = size(Cs,1);
 
 % r follows directly, it's the remainder number of rows.
 r = size(C,1) - s;
 
+% Now, eta will be a vector with the number of nodes for each body.
+eta = [size(Csh_v,  2);
+       size(Crb,    2);
+       size(Chip_v, 2)];
+
 % later, we will need number of nodes per body. Could get num col of any of
 % the submatrices here
-eta = size(Cso, 2);
+% eta = size(Cso, 2);
 
 % number of nodes
-n = size(C, 2);
+% n = size(C, 2);
 
 if debugging >= 2
     C
@@ -296,16 +309,19 @@ end
 % gravitational constant
 g = 9.81;
 
-% Mass of a single vertebra
+%%% MASSES NOT YET CORRECTED
+
+% The masses here are a bit complicated.
+% For one vertebra:
 % On 2019-07-18, the middle vertebrae are very light, 100g.
-% To-do: estimates from Solidworks about mass of shoulders and hips.
-mBody = 0.1;
+mVert = 0.1;
 
 % mass per nodes according to vertebra body
-mNode = mBody/eta;
+eta_vert = size(Crb, 2);
+mVertNode = mVert/eta_vert;
 
 % and in vector form,
-m = ones(n, 1) * mNode;
+m = ones(n, 1) * mVertNode;
 
 % Example of how to do the 'anchored' analysis.
 % Declare a vector w \in R^n, 
@@ -331,7 +347,8 @@ w = ones(n,1);
 %% Trajectory of positions
              
 % translate the vertebrae out along one axis
-translation = [ be * (3/4);
+% Was be * 3/4 for the 2D spine, but just be is good in 3D.
+translation = [ be;
                 0;
                 0];
 
@@ -353,8 +370,16 @@ end
 %% Calculations for the inputs to the core invkin library
 
 % The nodal coordinates (x, y, z)
-% calculate from position trajectory
-coord = getCoord_3d(a, xi, debugging);
+% calculate from position trajectory, for each body.
+% Body 1: shoulders
+coordSh = getCoord_3d(a_shoulder, xi(1:6), debugging);
+% Body 2: vertebra
+coordV = getCoord_3d(a, xi(7:12), debugging);
+% Body 3: hips
+coordH = getCoord_3d(a_hip, xi(13:18), debugging);
+% stack all back together. One column is a node, so
+coord = [coordSh, coordV, coordH];
+% coord = getCoord_3d(a, xi, debugging);
 
 if debugging >= 2
     coord
@@ -366,6 +391,12 @@ end
 x = coord(1, :)';
 y = coord(2, :)';
 z = coord(3, :)';
+
+% Plot
+rad = 0.005;
+labelsOn = 1;
+plotTensegrity3d(C, x, y, z, s, rad, labelsOn);
+
 
 % A test: calculate the external reaction forces if certain nodes are
 % pinned. That would be 4 and 5 for the left vertebra, and maybe for
