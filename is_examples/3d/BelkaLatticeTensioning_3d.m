@@ -53,7 +53,7 @@ qMin = 3;
 
 %%%%%%%%%%%%%%%%%% TO-DO: UPDATE FROM CAD
 % bar_endpoint = 0.5; % meters. 50 cm.
-be = 142 * 10^-3 % meters. Is 142 mm, from CAD on 2019-07-23.
+be = 142 * 10^-3; % meters. Is 142 mm, from CAD on 2019-07-23.
 
 % This is for the "vertical" spine
 % a = [   0,              0,              0;
@@ -200,16 +200,16 @@ Csh_v = [Csh;
          zeros(size(Crb,1), size(sh,2)), Crb];
 
 % For the hips, we want to number the members for the vertebra first, then
-% the hips. 
+% the hips. *NOTE: left and right are switched since mirorred.
 % Frame for the hips is 11 nodes,
 % 1. vertebra center,
 % 2-5. v2; ... ; v5 vertebra nodes
-% 6. center between shoulders (origin shifted back in x),
+% 6. center between hips (origin shifted back in x),
 % 7. CoM,
-% 8. left shoulder joint,
-% 9. right shoulder joint,
-% 10. left foot,
-% 11. right foot
+% 8. right hip joint,
+% 9. left hip joint,
+% 10. right foot,
+% 11. left foot
 
 % For the hips themselves:
 Chip = [1  0  0  0  0 -1  0  0  0  0  0;
@@ -270,20 +270,6 @@ Cs = [Cs_sh; Cs_hip];
 % Concatenate for the full C matrix.
 C = [Cs; Cr];
 
-% NOTE HERE that though we'll be removing the leftmost vertebra later, we
-% still need its connectivity matrix blocks, so number of bodies is
-% actually b+1.
-
-% C = get_C(Cso, Csi, Crb, b);
-
-
-% Need to specify number of cables, to split up C.
-% Cables per pair of bodies is number in source (or sink, equivalently)
-% sigma = size(Cso, 1);
-% and there is one pair of cables between each moving body, meaning (for
-% example) two sets of cables for three bodies, so b-1 here
-% s = sigma * (b-1);
-
 % Number of cables is dimension of the Cs matrix.
 s = size(Cs,1);
 
@@ -299,9 +285,6 @@ eta = [size(Csh_v,  2);
 % the submatrices here
 % eta = size(Cso, 2);
 
-% number of nodes
-% n = size(C, 2);
-
 if debugging >= 2
     C
 end
@@ -312,16 +295,35 @@ g = 9.81;
 %%% MASSES NOT YET CORRECTED
 
 % The masses here are a bit complicated.
-% For one vertebra:
 % On 2019-07-18, the middle vertebrae are very light, 100g.
 mVert = 0.1;
+% On 2019-07-24, shoulders and hips are (from Solidworks)
+mShHip = 3.519;
 
 % mass per nodes according to vertebra body
-eta_vert = size(Crb, 2);
-mVertNode = mVert/eta_vert;
+% eta_vert = size(Crb, 2);
+% mVertNode = mVert/eta_vert;
+
+% Most points won't have masses on them. We'll only assign mass to the CoM
+% (or center of vertebra, respectively.)
+m = zeros(n,1);
+% Shoulder CoM at node 2 in shoulder frame
+m(2) = mShHip;
+% For the hips, at node 7 out of 11, or equivalently, end - 4.
+m(end-4) = mShHip;
+
+% The vertebrae centers are at node 1 in the "a" frame, which begins right
+% after a_shoulder.
+% There are b-2 vertebrae.
+for i=1:(b-2)
+    % this vertebra's center index is 
+    % (number of shoulder nodes) + vertebra center node translated out
+    index = size(a_shoulder,2) + (i-1)*size(a,2) + 1;
+    m(index) = mVert;
+end
 
 % and in vector form,
-m = ones(n, 1) * mVertNode;
+% m = ones(n, 1) * mVertNode;
 
 % Example of how to do the 'anchored' analysis.
 % Declare a vector w \in R^n, 
@@ -392,31 +394,36 @@ x = coord(1, :)';
 y = coord(2, :)';
 z = coord(3, :)';
 
-% Plot
+% Plot for reference
 rad = 0.005;
 labelsOn = 1;
 plotTensegrity3d(C, x, y, z, s, rad, labelsOn);
 
-
-% A test: calculate the external reaction forces if certain nodes are
-% pinned. That would be 4 and 5 for the left vertebra, and maybe for
-% example these same on the 3rd vertebra, which are 14 and 15
+% Calculate the external reaction forces at the feet.
+% Vector of assigning pinned nodes
 pinned = zeros(n,1);
-pinned(4) = 1;
+
+% Feet are nodes (in their local frames)
+% front left = 5
+% front right = 6
+% rear left = 10
+% rear right = 11
 pinned(5) = 1;
-pinned(14) = 1;
-pinned(15) = 1;
+pinned(6) = 1;
+% the rear are more easily just (end) and (end-1)
+pinned(end) = 1;
+pinned(end-1) = 1;
 
 % Enforce that the front legs are same and back legs are same
 % (see getFrictionlessRxnSymmetric_3d for description of this matrix)
 % two constraints
 symmetric = zeros(2, n);
 % front legs
-symmetric(1, 4) = 1;
-symmetric(1, 5) = -1;
+symmetric(1, 5) = 1;
+symmetric(1, 6) = -1;
 % back legs
-symmetric(2, 14) = 1;
-symmetric(2, 15) = -1;
+symmetric(2, end-1) = 1;
+symmetric(2, end) = -1;
 
 % [rx, ry, rz] = getFrictionlessRxn_3d(x, y, z, pinned, m, g, debugging);
 [rx, ry, rz] = getFrictionlessRxnSymmetric_3d(x, y, z, pinned, m, g, symmetric, debugging);
@@ -464,9 +471,9 @@ optionalInputs.debugging = debugging;
 [fOpt, qOpt, len, ~, ~] = rbISO_3d(mandInputs, optionalInputs);
 
 % Plot
-rad = 0.01;
-labelsOn = 1;
-plotTensegrity3d(C, x, y, z, s, rad, labelsOn);
+% rad = 0.01;
+% labelsOn = 1;
+% plotTensegrity3d(C, x, y, z, s, rad, labelsOn);
 
 
 
