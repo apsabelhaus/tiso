@@ -34,6 +34,9 @@ function [Kb, K] = get_Kb(eta, d)
 %       K = [Kb, zeros, zeros;
 %            zeros, Kb, zeros;
 %            zeros, zeros, Kb];
+%
+%       Note, this reduces to the "same number of nodes in all bodies" case
+%       when setting eta = ones(b,1) * (number of nodes in a body.)
 
 % validate: eta should be a column
 if ~( size(eta,2) == 1 )

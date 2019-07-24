@@ -37,7 +37,7 @@ end
 % qMin = 0.5; % units of N/m, depending on m and g
 % Putting a higher pretension sometimes helps give consistent bounds on cables and
 % prevents too many with different forces.
-qMin = 3;
+qMin = 5;
 
 % Local frame for one rigid body (locations of nodes)
 
@@ -466,6 +466,7 @@ optionalInputs.w = w;
 optionalInputs.R = R;
 optionalInputs.qMin = qMin;
 optionalInputs.debugging = debugging;
+optionalInputs.eta = eta;
 
 % Solve
 [fOpt, qOpt, len, ~, ~] = rbISO_3d(mandInputs, optionalInputs);

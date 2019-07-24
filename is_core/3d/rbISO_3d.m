@@ -45,11 +45,10 @@ function [fOpt, qOpt, lengths, Ab, pb] = rbISO_3d(mandInputs, varargin)
 %           s = number of cables (tension-only members in the system.) This is
 %               required to pose the optimization program such that no cables "push."
 %
-%           b = number of rigid bodies. With fancier algorithms, we could actually
-%               do a search through the C matrix (graph search!) to find how many
-%               independent cycles there are in the "r" block of it (rods only), but
-%               for now, it's easier to just have the caller specify. (Robot designers
-%               will know this intuitively: e.g., we've made a robot with 2 vertebrae.)
+%           b = number of rigid bodies. If eta is not specified as an
+%               optional argument, then it's assumed that there are the
+%               same number of nodes in all bodies, eta = n/b (or adjusted
+%               by W, to h/b.)
 %
 %   optionalInputs: a struct of inputs to the problem that are OPTIONAL.
 %       These specifically include (and have the default values/behaviors
@@ -86,6 +85,11 @@ function [fOpt, qOpt, lengths, Ab, pb] = rbISO_3d(mandInputs, varargin)
 %               \mathbb{R}^+.
 %               Default value: unused, only needed for minimum rest length
 %               constraint (which is optional.)
+%
+%           eta \in \mathbb{Z}_+^(b) = a vector of number of nodes in a body, 
+%               in each entry is the number of nodes for that body. This
+%               allows specifying unevenly-distributed numbers of nodes
+%               (not just n/b.)
 %
 % Outputs:
 %   fOpt = optimal forces (inv kin soln) for ALL members. First s are
@@ -180,6 +184,10 @@ if isfield(optionalInputs, 'uMin')
     % else do nothing - spring const not defined
 end
 
+if isfield(optionalInputs, 'eta')
+    eta = optionalInputs.eta;
+end
+
 % default is to not use the minimum rest length constraint
 uMinConstr = 0;
 % but if both uMin and kappa are defined, use it:
@@ -200,14 +208,22 @@ end
 r = size(C,1) - s; % rows of C is total number of members, and s is
 % provided.
 
-% The number of nodes per rigid body is
-%eta = n / b;
-% Actually, now, removing the nodes that are not being considered (the
-% anchors), we really want to calculate eta using h here, where h <= n is
+% For below, we're going to now (as of 2019-07-24) adopt the notation that
+% eta is a column vector of size 'b', with number of nodes in each body in
+% it.
+
+% Previous behavior is recovered here, if eta is not specified, by assuming
+% that the nodes are evenly distributed in the remaining bodies.
+
+% We really want to calculate eta using h here, where h <= n is
 % the number of remaining nodes.
 % THIS WORKS EVEN IF w = ones, since in that case, h = n.
 h = nnz(w);
-eta = h / b;
+
+if ~exist('eta', 'var')
+    nodes_per_body = h / b;
+    eta = ones(b,1) * nodes_per_body;
+end
 
 % A warning message here, since it's easy to mess up with the anchor
 % removal code, and since no dimensional errors are generated if so.
@@ -249,7 +265,10 @@ lengths = getLen_3d(x, y, z, s, C);
 % A matrix to pattern out the collapsation.
 % We could do ones(1, eta) but all Drew's papers use the 'ones' as a column
 % vector, so do that here, and transpose it.
-K = kron(eye(d*b), ones(eta, 1)');
+% K = kron(eye(d*b), ones(eta, 1)');
+
+% Use the new helper function.
+[~, K] = get_Kb(eta, d);
 
 % As in the standard force-density method, calculate the static equilibrium
 % matrix:
@@ -279,8 +298,6 @@ Aw = Wf * A;
 % The Af matrix can then be collapsed to size (db x s) from size (dn x
 % (s+r))
 Af = K * Aw * H; 
-% Af = K * Aw * H_hat'; 
-% Af = K * A * H_hat';
 
 % We can do a quick check: if any individual column is zero, that means
 % that a cable somehow has zero contribution to the force balance, which is

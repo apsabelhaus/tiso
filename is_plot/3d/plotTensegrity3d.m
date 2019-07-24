@@ -22,7 +22,7 @@ function handles = plotTensegrity3d(C, x, y, z, s, rad, labelsOn)
 %       nice surface illustration for the bar elements, and rad determines
 %       how thick the bars are (their radius.)
 %
-%       labelsOn = flag, turns on or off the numbering of nodes
+%       labelsOn = flag, turns on or off the numbering of nodes and cables
 %
 %   Outputs:
 %
@@ -82,11 +82,14 @@ nodeRad = 1.2 * rad;
 % Labeling the nodes needs to happen with some offset from the point
 % itself, so that the sphere doesn't overtake the point.
 % We'll do the radius of the nodes plus some constant
-labelOffset = nodeRad + 0.02;
+labelOffset = nodeRad + 0.01;
 
 % We can also set the color and size of the text.
 labelColor = 'k';
-labelSize = 14;
+labelSize = 12;
+
+% For the cables, make them a different color
+labelColorCable = cableColor;
 
 %% Plot the nodes
 
@@ -138,6 +141,16 @@ for j=1:s
     % ...and also returns a handle that we should be storing.
     handles{end+1} = line(cableX, cableY, cableZ, 'Color', cableColor, ...
         'LineWidth', cableThickness);
+    % Put a label for this cable, halfway between its two points,
+    % including the offset so it's easier to see.
+    if labelsOn
+        % the midway point between the two anchors: average each coordinate
+        midX = sum(cableX(1,:))/2;
+        midY = sum(cableY(1,:))/2;
+        midZ = sum(cableZ(1,:))/2;
+        handles{end+1} = text(midX + labelOffset, midY + labelOffset, midZ + labelOffset, ...
+        num2str(j), 'Color', labelColorCable, 'FontSize', labelSize);
+    end
 end
 
 %% Plot the bars

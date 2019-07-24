@@ -20,11 +20,10 @@ function validate_3d(mi, varargin)
 %           s = number of cables (tension-only members in the system.) This is
 %               required to pose the optimization program such that no cables "push."
 %
-%           b = number of rigid bodies. With fancier algorithms, we could actually
-%               do a search through the C matrix (graph search!) to find how many
-%               independent cycles there are in the "r" block of it (rods only), but
-%               for now, it's easier to just have the caller specify. (Robot designers
-%               will know this intuitively: e.g., we've made a robot with 2 vertebrae.)
+%           b = number of rigid bodies. If eta is not specified as an
+%               optional argument, then it's assumed that there are the
+%               same number of nodes in all bodies, eta = n/b (or adjusted
+%               by W, to h/b.)
 %
 
 if(any(structfun(@isempty,mi)) == 1)
@@ -141,6 +140,11 @@ end
 %               \mathbb{R}^+.
 %               Default value: unused, only needed for minimum rest length
 %               constraint (which is optional.)
+%
+%           eta \in \mathbb{Z}_+^(b) = a vector of number of nodes in a body, 
+%               in each entry is the number of nodes for that body. This
+%               allows specifying unevenly-distributed numbers of nodes
+%               (not just n/b.)
 
 % First: do we have optional arguments/inputs?
 hasOI = (nargin > 1);
@@ -195,7 +199,13 @@ elseif isfield(oi, 'kappa')
 elseif isfield(oi, 'uMin')
     uMin = oi.uMin;
     % to-do: fill in
-    
+   
+elseif isfield(oi, 'eta')
+    eta = oi.eta;
+    % should be "b" number of elements in a column
+    if ~all( size(eta) == [b, 1] )
+        error('Error: eta is the wrong dimension (needs b entries.)');
+    end
 end
 
    
