@@ -45,8 +45,15 @@ qMin = 3;
 % spine. Nodes are column vectors [x; y; z], but for ease, written as transposed
 % here.
 
+% FRAME IN MATLAB:
+% Belka length axis: -X. Belka's head is facing the -X axis, and hips/rear
+% are facing the +X axis.
+% Belka width axis: Y. Right shoulder is +Y.
+% Belka height axis: Z. 
+
 %%%%%%%%%%%%%%%%%% TO-DO: UPDATE FROM CAD
-bar_endpoint = 0.5; % meters. 50 cm.
+% bar_endpoint = 0.5; % meters. 50 cm.
+be = 142 * 10^-3 % meters. Is 142 mm, from CAD on 2019-07-23.
 
 % This is for the "vertical" spine
 % a = [   0,              0,              0;
@@ -56,25 +63,78 @@ bar_endpoint = 0.5; % meters. 50 cm.
 %         0,              -bar_endpoint,    bar_endpoint]';
 
 % This is for the "horizontal" spine
-a = [   0,                0,              0;
-        -bar_endpoint,    0,              -bar_endpoint;
-        -bar_endpoint,    0,              bar_endpoint;
-        bar_endpoint,     bar_endpoint,   0;
-        bar_endpoint,    -bar_endpoint,   0]';    
-    
+% columns are x, y, z
+a = [   0,      0,    0;
+        -be,    0,    -be;
+        -be,    0,    be;
+        be,     be,   0;
+        be,    -be,   0]';    
+
+% For the shoulders (without vertebra attached), this is their local frame,
+% with the origin at the center of the vertebra-facing face of the
+% shoulders.
+
+% Ordering:
+% center between shoulders (origin shifted back in x),
+% CoM,
+% left shoulder joint,
+% right shoulder joint,
+% left foot,
+% right foot
+
+sh_w = 178 * 10^-3;
+sh_h = 275 * 10^-3;
+sh_d = 32 * 10^-3;
+sh_com_x = 39 * 10^-3;
+sh_com_z = 12 * 10^-3;
+
+sh = [-sh_d,        0,      0;
+      -sh_com_x,    0,      -sh_com_z;
+      -sh_d,        -sh_w,  0;
+      -sh_d,        sh_w,   0;
+      -sh_d,        -sh_w,  -sh_h;
+      -sh_d,        sh_w,   -sh_h]';
+
+% Connecting the shoulders/hips to the vertebrae.
+% For the shoulders, shift the "sh" frame so that the origin is at the
+% vertebra center, then concatenate the "a" frame.
+sh_v_conn = 160 * 10^-3;
+% frame with shoulders and vertebra
+% the points are column vectors now, not rows.
+sh_v_shift = [sh_v_conn; 0; 0;];
+a_shoulder = [sh - sh_v_shift, a];
+
+% For the hips, need to rotate the "shoulders" to turn them into hips, then
+% concatenate the hips to the last vertebra.
+% rotation is around the Z axis by 180 degrees.
+
+% A shortcut to the rotation matrices is MATLAB's nice makehgtform
+% command. However, need to truncate off the 4th row/column since the
+% command is used for computer graphics and we don't care about
+% homongeneity.
+rot_z = makehgtform('zrotate', pi);
+rot_z = rot_z(1:3, 1:3);
+
+% rotate then translate the shoulders to become hips.
+a_hip = [a, (rot_z * sh) + sh_v_shift];
+
 if debugging >= 2
     a
+    a_shoulder
+    a_hip
 end
 
-% number of rigid bodies. Note this is number of MOVING bodies now!
-% so we have five vertebrae, 4 moving.
-% b= 4;
+% number of rigid bodies. This INCLUDES the shoulder/hip assemblies.
 b = 3;
-% number of nodes
-n = size(a, 2) * b;
+% number of nodes.
+% This is the number of vertebrae (e.g. total bodies minus 2 for
+% shoulder/hip) times nodes per vertebra, plus number of nodes each for
+% hips and shoulders.
+n = size(a, 2) * (b-2) + size(a_shoulder, 2) + size(a_hip, 2);
 
 % Configuration matrix. Split into source, sink, and body matrices for each
-% vertebra,
+% vertebra.
+% Columns are nodes, rows are members (rods or cables)
 
 % source matrix
 Cso = [0 1 0 0 0;
@@ -101,13 +161,115 @@ Crb = [1 -1 0 0 0;
        1 0 -1 0 0;
        1 0 0 -1 0;
        1 0 0 0 -1];
-   
+
+% Also now for the shoulders and hips.
+% Frame for shoulders is 11 nodes,
+% 1. center between shoulders (origin shifted back in x),
+% 2. CoM,
+% 3. left shoulder joint,
+% 4. right shoulder joint,
+% 5. left foot,
+% 6. right foot
+% 7. vertebra center,
+% 8-11. v2; ... ; v5 vertebra nodes
+
+% connect vertebra center to shoulder geometric center.
+% connect shoulder geometric center to 
+% 1. the left shoulder joint,
+% 2. right shoulder joint,
+% 3. CoM.
+% connect the shoulder joints to left / right feet.
+
+% For the shoulders themselves:
+Csh = [1  0  0  0  0  0 -1  0  0  0  0;
+       1 -1  0  0  0  0  0  0  0  0  0;
+       1  0 -1  0  0  0  0  0  0  0  0;
+       1  0  0 -1  0  0  0  0  0  0  0;
+       0  0  1  0 -1  0  0  0  0  0  0;
+       0  0  0  1  0 -1  0  0  0  0  0];
+
+% Concatenate the vertebra matrix into the bottom-right corner here.
+% number of rows will be number of rows in vertebra matrix, number columns
+% of zeros will be number of nodes in the shoulders only
+Csh_v = [Csh;
+         zeros(size(Crb,1), size(sh,2)), Crb];
+
+% For the hips, we want to number the members for the vertebra first, then
+% the hips. 
+% Frame for the hips is 11 nodes,
+% 1. vertebra center,
+% 2-5. v2; ... ; v5 vertebra nodes
+% 6. center between shoulders (origin shifted back in x),
+% 7. CoM,
+% 8. left shoulder joint,
+% 9. right shoulder joint,
+% 10. left foot,
+% 11. right foot
+
+% For the hips themselves:
+Chip = [1  0  0  0  0 -1  0  0  0  0  0;
+        0  0  0  0  0  1 -1  0  0  0  0;
+        0  0  0  0  0  1  0 -1  0  0  0;
+        0  0  0  0  0  1  0  0 -1  0  0;
+        0  0  0  0  0  0  0  1  0 -1  0;
+        0  0  0  0  0  0  0  0  1  0 -1];
+
+% Same internal ordering works though since nodes have the same
+% shoulder/hip frame just rotated
+Chip_v = [Crb, zeros(size(Crb,1), size(sh,2));
+          Chip];
+
+% The bodies' connectivity matrix will be the shoulders, vertebra(e), hips
+% along a "diagonal".
+% Total number of members is the sum of all number of rows.
+r = size(Crb,1) + size(Csh_v,1) + size(Chip_v,1);
+
+% Insert into place
+Cr = zeros(r, n);
+% shoulders
+Cr(1:size(Csh_v, 1), 1:size(Csh_v,2)) = Csh_v;
+% the one vertebra
+Cr(size(Csh_v, 1)+1 : size(Csh_v, 1) + size(Crb, 1), ...
+   size(Csh_v, 2)+1 : size(Csh_v, 2) + size(Crb, 2)) = Crb;
+% the hips at the end
+Cr( (end - size(Chip_v,1) + 1):end, (n - size(Chip_v,2) + 1):n) = Chip_v; 
+
 % Get the full connectivity matrix.
+% Since we're going to build it up manually, do blocks for the shoulder/hip
+% cable connections.
+% We need a "source" matrix for the shoulders and a "sink" matrix for the
+% hips. Both are the vertebra frames just with a larger number of columns.
+Cso_sh = [zeros(size(Cso,1), size(sh,2)), Cso];
+Csi_hip = [Csi, zeros(size(Csi,1), size(sh,2))];
+
+% Total number of columns will always be n, total number of nodes.
+Cs_sh = zeros(size(Cso, 1), n);
+% insert at the leftmost indices
+Cs_sh(:, 1:size(Cso_sh,2)) = Cso_sh;
+% and for the vertebra sink
+Cs_sh(:, size(Cso_sh,2)+1 : size(Cso_sh,2) + size(Csi,2)) = Csi;
+% same for the hips, which will be the last-numbered cables.
+Cs_hip = zeros(size(Csi, 1), n);
+% the hips are at the end
+Cs_hip(:, (n-size(Csi_hip,2)+1):n) = Csi_hip;
+% the vertebra is second-to-end
+Cs_hip(:, (n - size(Csi_hip,2) - size(Cso,2) + 1) : (n - size(Csi_hip,2)) ) = Cso;
+
+% A nice use of the get_C function is to pass in [] as Crb, only generating
+% the cable connectivity matrix.
+% TO-DO: when b > 3, we will need vertebra-to-vertebra Cs matrices.
+
+% The full cable connectivity matrix is then
+Cs = [Cs_sh; Cs_hip];
+
+% Concatenate for the full C matrix.
+C = [Cs; Cr];
+
 % NOTE HERE that though we'll be removing the leftmost vertebra later, we
 % still need its connectivity matrix blocks, so number of bodies is
 % actually b+1.
 
-C = get_C(Cso, Csi, Crb, b);
+% C = get_C(Cso, Csi, Crb, b);
 
 
 % Need to specify number of cables, to split up C.
@@ -169,7 +331,7 @@ w = ones(n,1);
 %% Trajectory of positions
              
 % translate the vertebrae out along one axis
-translation = [ bar_endpoint * (3/4);
+translation = [ be * (3/4);
                 0;
                 0];
 
@@ -271,7 +433,7 @@ optionalInputs.debugging = debugging;
 [fOpt, qOpt, len, ~, ~] = rbISO_3d(mandInputs, optionalInputs);
 
 % Plot
-rad = 0.02;
+rad = 0.01;
 labelsOn = 1;
 plotTensegrity3d(C, x, y, z, s, rad, labelsOn);
 
