@@ -536,6 +536,8 @@ optionalInputs.eta = eta;
 if (debugging >= 1)
     disp('Optimal cable tensions (N) are:');
     fOpt
+    disp('(Final) lengths of each cable (meters) are:');
+    len
 end
     
 
