@@ -531,13 +531,7 @@ optionalInputs.eta = eta;
 % labelsOn = 1;
 % plotTensegrity3d(C, x, y, z, s, rad, labelsOn);
 
-% Print out optimal forces
-
-if (debugging >= 1)
-    disp('Optimal cable tensions (N) are:');
-    fOpt
-end
-    
+% O
 
 
 
