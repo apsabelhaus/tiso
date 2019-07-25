@@ -26,7 +26,7 @@ addpath( genpath('is_state_traj_3d') );
 % 0 = no output except for errors
 % 1 = Starting message, results from quadprog
 % 2 = Verbose output of status.
-debugging = 2;
+debugging = 1;
 
 % Startup message if appropriate
 if debugging >= 1
@@ -130,7 +130,7 @@ if debugging >= 2
 end
 
 % number of rigid bodies. This INCLUDES the shoulder/hip assemblies.
-b = 3;
+b = 5;
 % number of nodes.
 % This is the number of vertebrae (e.g. total bodies minus 2 for
 % shoulder/hip) times nodes per vertebra, plus number of nodes each for
@@ -226,20 +226,34 @@ Chip_v = [Crb, zeros(size(Crb,1), size(sh,2));
 
 % The bodies' connectivity matrix will be the shoulders, vertebra(e), hips
 % along a "diagonal".
-% Total number of members is the sum of all number of rows.
-r = size(Crb,1) + size(Csh_v,1) + size(Chip_v,1);
+% Total number of members is the sum of all number of rows, with b-2
+% vertebrae.
+r = ((b-2) * size(Crb,1)) + size(Csh_v,1) + size(Chip_v,1);
 
 % Insert into place
 Cr = zeros(r, n);
 % shoulders
 Cr(1:size(Csh_v, 1), 1:size(Csh_v,2)) = Csh_v;
-% the one vertebra
-Cr(size(Csh_v, 1)+1 : size(Csh_v, 1) + size(Crb, 1), ...
-   size(Csh_v, 2)+1 : size(Csh_v, 2) + size(Crb, 2)) = Crb;
+% the multiple vertebrae
+for i=1:(b-2)
+    % The indices. Row start/end, column start/end.
+    % Starts at (shoulders + num prev vert + 1)
+    row_s = size(Csh_v, 1) + (i-1)*size(Crb, 1) + 1;
+    % ends start + length of vertebra, but need to subtract 1 for
+    % off-by-one error with MATLAB's counting.
+    row_e = row_s + size(Crb, 1) - 1;
+    % columns same format just along the column dimension
+    col_s = size(Csh_v, 2) + (i-1)*size(Crb, 2) + 1;
+    col_e = col_s + size(Crb, 2) - 1;
+%     Cr(size(Csh_v, 1)+1 : size(Csh_v, 1) + size(Crb, 1), ...
+%         size(Csh_v, 2)+1 : size(Csh_v, 2) + size(Crb, 2)) = Crb;
+    Cr(row_s:row_e, col_s:col_e) = Crb;
+end
 % the hips at the end
 Cr( (end - size(Chip_v,1) + 1):end, (n - size(Chip_v,2) + 1):n) = Chip_v; 
 
 % Get the full connectivity matrix.
+
 % Since we're going to build it up manually, do blocks for the shoulder/hip
 % cable connections.
 % We need a "source" matrix for the shoulders and a "sink" matrix for the
@@ -260,26 +274,62 @@ Cs_hip(:, (n-size(Csi_hip,2)+1):n) = Csi_hip;
 % the vertebra is second-to-end
 Cs_hip(:, (n - size(Csi_hip,2) - size(Cso,2) + 1) : (n - size(Csi_hip,2)) ) = Cso;
 
+% Number of cables is rows of...
+% Cs_sh,
+% (b-3) * vertebra source or sink, since one pair per vertebra-to-vertebra
+% Cs_hip
+s = size(Cs_sh,1) + size(Cs_hip,1) + (b-3)*size(Cso,1);
+
+% insert into place
+Cs = zeros(s, n);
+% shoulders
+Cs(1:size(Cs_sh,1), 1:size(Cs_sh,2)) = Cs_sh;
+% the multiple vertebrae
 % A nice use of the get_C function is to pass in [] as Crb, only generating
-% the cable connectivity matrix.
-% TO-DO: when b > 3, we will need vertebra-to-vertebra Cs matrices.
+% the cable connectivity matrix block for the vertebra-to-vertebra
+% connections.
+% That's 
+Cs_vert = get_C(Cso, Csi, [], b-2);
+% if nonempty (i.e. b-2 > 1),
+if all(size(Cs_vert) > 0)
+    % add in, starting at the bottom-right corner of Cs_sh.
+    row_s_s = size(Cs_sh,1) + 1;
+    row_e_s = size(Cs_sh,1) + size(Cs_vert,1);
+    % for the columns, they need to start and end where the actual elements
+    % start and end, not the full columns, since Cs_sh etc. are already
+    % expanded to have n columns.
+    % that's the last node of the shoulder, i.e, 
+    col_s_s = size(Csh_v,2) + 1;
+    col_e_s = size(Csh_v,2) + size(Cs_vert,2);
+    Cs(row_s_s:row_e_s, col_s_s:col_e_s) = Cs_vert;
+end
+
+% the hips at the end
+Cs( (end - size(Cs_hip,1) + 1):end, (n - size(Cs_hip,2) + 1):n) = Cs_hip; 
 
 % The full cable connectivity matrix is then
-Cs = [Cs_sh; Cs_hip];
+% Cs = [Cs_sh; Cs_hip];
 
 % Concatenate for the full C matrix.
 C = [Cs; Cr];
 
 % Number of cables is dimension of the Cs matrix.
-s = size(Cs,1);
+% s = size(Cs,1);
 
 % r follows directly, it's the remainder number of rows.
-r = size(C,1) - s;
+% r = size(C,1) - s;
 
 % Now, eta will be a vector with the number of nodes for each body.
-eta = [size(Csh_v,  2);
-       size(Crb,    2);
-       size(Chip_v, 2)];
+eta = zeros(b, 1);
+% shoulders and hips
+eta(1) = size(Csh_v, 2);
+eta(end) = size(Chip_v, 2);
+% all the vertebrae
+eta(2:end-1) = size(Crb, 2);
+
+% eta = [size(Csh_v,  2);
+%        size(Crb,    2);
+%        size(Chip_v, 2)];
 
 % later, we will need number of nodes per body. Could get num col of any of
 % the submatrices here
@@ -375,10 +425,14 @@ end
 % calculate from position trajectory, for each body.
 % Body 1: shoulders
 coordSh = getCoord_3d(a_shoulder, xi(1:6), debugging);
-% Body 2: vertebra
-coordV = getCoord_3d(a, xi(7:12), debugging);
-% Body 3: hips
-coordH = getCoord_3d(a_hip, xi(13:18), debugging);
+% Body 2:b-1 = vertebrae
+% coordV = getCoord_3d(a, xi(7:12), debugging);
+% indices into xi. 6 states per body, so 2nd body starts at 7
+xi_v_start = 7;
+xi_v_end = 6 + (b-2) * 6;
+coordV = getCoord_3d(a, xi(xi_v_start:xi_v_end), debugging);
+% Body 3: hips. it's at the end of xi
+coordH = getCoord_3d(a_hip, xi(end-6+1:end), debugging);
 % stack all back together. One column is a node, so
 coord = [coordSh, coordV, coordH];
 % coord = getCoord_3d(a, xi, debugging);
