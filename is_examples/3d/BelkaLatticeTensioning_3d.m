@@ -38,7 +38,8 @@ end
 % Putting a higher pretension sometimes helps give consistent bounds on cables and
 % prevents too many with different forces.
 % qMin = 5;
-qMin = 50;
+qMin = 25;
+% qMin = 40;
 
 % Local frame for one rigid body (locations of nodes)
 
@@ -246,8 +247,6 @@ for i=1:(b-2)
     % columns same format just along the column dimension
     col_s = size(Csh_v, 2) + (i-1)*size(Crb, 2) + 1;
     col_e = col_s + size(Crb, 2) - 1;
-%     Cr(size(Csh_v, 1)+1 : size(Csh_v, 1) + size(Crb, 1), ...
-%         size(Csh_v, 2)+1 : size(Csh_v, 2) + size(Crb, 2)) = Crb;
     Cr(row_s:row_e, col_s:col_e) = Crb;
 end
 % the hips at the end
@@ -308,17 +307,8 @@ end
 % the hips at the end
 Cs( (end - size(Cs_hip,1) + 1):end, (n - size(Cs_hip,2) + 1):n) = Cs_hip; 
 
-% The full cable connectivity matrix is then
-% Cs = [Cs_sh; Cs_hip];
-
 % Concatenate for the full C matrix.
 C = [Cs; Cr];
-
-% Number of cables is dimension of the Cs matrix.
-% s = size(Cs,1);
-
-% r follows directly, it's the remainder number of rows.
-% r = size(C,1) - s;
 
 % Now, eta will be a vector with the number of nodes for each body.
 eta = zeros(b, 1);
@@ -332,18 +322,12 @@ eta(2:end-1) = size(Crb, 2);
 %        size(Crb,    2);
 %        size(Chip_v, 2)];
 
-% later, we will need number of nodes per body. Could get num col of any of
-% the submatrices here
-% eta = size(Cso, 2);
-
 if debugging >= 2
     C
 end
 
 % gravitational constant
 g = 9.81;
-
-%%% MASSES NOT YET CORRECTED
 
 % The masses here are a bit complicated.
 % On 2019-07-18, the middle vertebrae are very light, 100g.
@@ -399,6 +383,8 @@ w = ones(n,1);
 
 %% Trajectory of positions
              
+% FOR THE STRAIGHT-LINE BELKA:
+
 % translate the vertebrae out along one axis
 % Was be * 3/4 for the 2D spine, but just be is good in 3D.
 translation = [ be;
@@ -414,7 +400,16 @@ rotation = [0; 0; 0];
 % get the traj for all vertebrae
 % As of 2019-07-23, this generates "b" bodies AFTER the initial one at
 % zero, so need b-1 for all bodies included here.
-xi = trajStraightMultiBody_3d(translation, rotation, b-1);
+% xi = trajStraightMultiBody_3d(translation, rotation, b-1);
+
+% FOR THE CURVED-BACK BELKA:
+% starts at x0, last point xf should = (be * (b-1)) translations
+x0 = 0;
+xf = be * (b-1);
+% total height of curved back, from neutral position: arbitrary. try...
+back_h = -0.02;
+
+xi = trajArcX_3d(x0, xf, back_h, b);
 
 if debugging >= 2
     xi
@@ -539,7 +534,47 @@ if (debugging >= 1)
     disp('(Final) lengths of each cable (meters) are:');
     len
 end
-    
+
+% Save these to a CSV file for ease of use.
+filename_prefix = 'BelkaLatticeTensioning_';
+saveResults = 0;
+
+if saveResults
+    disp('Saving Belka Lattice Tensioning Results...');
+    % Record the current time in a string
+    startTimeString = datestr(datetime('now'));
+    % Remove the colons and spaces from this string so that Windows doesn't complain when this repository is cloned
+    % colons become dashes, spaces become underscores. Regular expressions to the rescue!
+    startTimeString = regexprep(startTimeString, ':', '-');
+    startTimeString = regexprep(startTimeString, ' ', '_');
+    % the file name
+    fileName = strcat(filename_prefix, startTimeString, '.csv');
+    % header
+    hdr = {};
+    hdr{end+1} = 'Belka Lattice Tensioning via Inverse Statics Optimization';
+    hdr{end+1} = 'Timestamp:';
+    hdr{end+1} = startTimeString;
+    hdr{end+1} = 'Pose of the robot:';
+%     hdr{end+1} = 'ARCHED BACK';
+%     hdr{end+1} = 'STRAIGHT BACK';
+    hdr{end+1} = 'Minimum force density (pretensioning) in N/m:';
+    hdr{end+1} = num2str(qMin);
+    hdr{end+1} = '';
+    hdr{end+1} = 'Cable No.,Force (N),Length (m)';
+    % concatenate the data together
+    cableNo = (1:s)';
+    resultsData = [cableNo, fOpt, len];
+    % open the file
+    fid = fopen(fileName, 'w');
+    % write all the header strings
+    for j = 1:size(hdr, 2)
+        fprintf(fid, '%s\n', string(hdr(j)));
+    end
+    % close so we can use dlmwrite
+    fclose(fid);
+    % dlmwrite defaults to comma as a delimiter, nicely.
+    dlmwrite(fileName, resultsData, '-append');
+end
 
 
 
