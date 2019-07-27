@@ -415,7 +415,7 @@ if debugging >= 2
     xi
 end
 
-%% Calculations for the inputs to the core invkin library
+%% Calculations for the inputs to the core inverse statics library
 
 % The nodal coordinates (x, y, z)
 % calculate from position trajectory, for each body.
@@ -498,9 +498,8 @@ pz = pz - m*g;
 R = getObj_2norm(s);
 
 %% Solve the inverse statics problem
-% invkin_core_3d(x, y, z, px, py, pz, C, s, q_min, debugging}
 
-% % The struct that contains all mandatory inputs to the ISO problem
+% The struct that contains all mandatory inputs to the ISO problem
 mandInputs.x = x;
 mandInputs.y = y;
 mandInputs.z = z;
