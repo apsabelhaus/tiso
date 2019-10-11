@@ -407,7 +407,11 @@ rotation = [0; 0; 0];
 x0 = 0;
 xf = be * (b-1);
 % total height of curved back, from neutral position: arbitrary. try...
-back_h = -0.02;
+% For lattice tensioning used on hardare Belka, Summer 2019
+% back_h = -0.02;
+% For exaggerated "cat" and "cow" poses
+back_h = 0.022;
+% back_h = -0.022;
 
 xi = trajArcX_3d(x0, xf, back_h, b);
 
@@ -446,7 +450,7 @@ z = coord(3, :)';
 
 % Plot for reference
 rad = 0.005;
-labelsOn = 1;
+labelsOn = 0;
 plotTensegrity3d(C, x, y, z, s, rad, labelsOn);
 
 % Calculate the external reaction forces at the feet.
@@ -574,6 +578,16 @@ if saveResults
     % dlmwrite defaults to comma as a delimiter, nicely.
     dlmwrite(fileName, resultsData, '-append');
 end
+
+% Some movements of the figure for the paper.
+% Orientation:
+view([-30 15]);
+% some extra space around the robot's legs
+xlim([-0.3 .9]);
+zlim([-0.34 0.17]);
+% move the Y-axis a bit
+ylh = ylabel('Y (m)');
+ylh.Position(3) = ylh.Position(3) + 0.05;
 
 
 

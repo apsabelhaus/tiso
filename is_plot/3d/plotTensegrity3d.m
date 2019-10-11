@@ -181,9 +181,13 @@ end
 
 %% Some labels
 title('Tensegrity Structure, 3D');
-xlabel('X Position (m)');
-ylabel('Y Position (m)');
-zlabel('Z Position (m)');
+% title('Tensegrity Quadruped Robot');
+% xlabel('X Position (m)');
+% ylabel('Y Position (m)');
+% zlabel('Z Position (m)');
+xlabel('X (m)');
+ylabel('Y (m)');
+zlabel('Z (m)');
 % Do a font size change.
 set(gca, 'FontSize', 14);
 % Sometimes this scales funny. Reset the axes.
