@@ -182,7 +182,8 @@ w = [zeros(sigma, 1);
 
 % Number of poses
 % numPts = 10;
-numPts = 30;
+% numPts = 30; % was 30 for my dissertation
+numPts = 20;
 
 % Initial pose of the spine
 % The frames need to be rotated to horizontal from the above
@@ -398,8 +399,15 @@ radius = 0.005; % meters.
 % plotTensegrity2d(C, calibratedCoordX, calibratedCoordY, s, radius);
 % Initial position:
 plotTensegrity2d(C, x(:,1), y(:,1), s, radius);
+
+% Make the axis limits nicer.
+ylim([-0.2 0.3]);
+xlim([-0.11 0.75]);
+
 % Final position:
 plotTensegrity2d(C, x(:,end), y(:,end), s, radius);
+ylim([-0.2 0.3]);
+xlim([-0.11 0.75]);
 
 % plot the cable tensions too
 % legendlabels = {'Horiz. Top', 'Horiz. Bot.', 'Saddle Top', 'Saddle Bot.'};

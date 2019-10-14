@@ -179,7 +179,8 @@ end
 
 
 %% Some labels
-title('Tensegrity Structure, 2D');
+% title('Tensegrity Structure, 2D');
+title('Tensegrity Spine Robot, 2D');
 xlabel('X Position (m)');
 ylabel('Y Position (m)');
 % Do a font size change.

@@ -60,6 +60,12 @@ xv( ~any(pinned,2) ) = [];
 yv( ~any(pinned,2) ) = [];
 zv( ~any(pinned,2) ) = [];
 
+% NOTE!!!
+% The way this will be presented in the paper, more logically, is
+% xv = nonzeros(diag(pinned)*x)
+% yv = nonzeros(diag(pinned)*y)
+% zv = nonzeros(diag(pinned)*z)
+
 if( debugging >= 2)
     disp('Nodal vectors for pinned joints:');
     xv

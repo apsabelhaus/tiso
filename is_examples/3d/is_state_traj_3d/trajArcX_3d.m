@@ -18,9 +18,6 @@ function [xiAll] = trajArcX_3d(x0, xf, h, b)
 %
 %   h = apex of the arc (vertex in Z for the parabola)
 %
-%   rotation0 = rotation angles for all rigid bodies. 
-%       Should be \in subset of R^3 for three dimension.
-%
 %   b = number of bodies to include in the trajectory. Must be => 2.
 %
 % Outputs:
