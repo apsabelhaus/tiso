@@ -414,6 +414,7 @@ xlim([-0.11 0.75]);
 legendlabels = {'HB', 'HT', 'SB', 'ST'};
 plotCableTensions(fOpt, sigma, 80, legendlabels);
 
+set(gca, 'FontSize', 16);
 
 
 

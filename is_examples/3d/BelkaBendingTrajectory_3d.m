@@ -413,8 +413,8 @@ xf = be * (b-1);
 % For lattice tensioning used on hardare Belka, Summer 2019
 % back_h = -0.02;
 % For exaggerated "cat" and "cow" poses
-back_h_max = 0.022;
-back_h_min = -0.022;
+back_h_max = -0.022;
+back_h_min = 0.022;
 
 % Trajectory: want same number as the 2D one...
 numPts = 20;
@@ -654,7 +654,7 @@ end
 
 % Plot for reference
 rad = 0.005;
-labelsOn = 0;
+labelsOn = 1;
 
 % Initial pose
 plotTensegrity3d(C, x(:,1), y(:,1), z(:,1), s, rad, labelsOn);
@@ -681,6 +681,43 @@ zlim([-0.34 0.17]);
 % move the Y-axis a bit
 ylh = ylabel('Y (m)');
 ylh.Position(3) = ylh.Position(3) + 0.05;
+
+% Plot the cable tensions also.
+% This will get m e s s y...
+% Cable sets should be:
+% 1) Horiz Bottom
+% 2) Horiz Top
+% 3) Horiz Right  (should be symmetric with left)
+% 4) Horiz Left
+% 5) Saddle Right Bottom (should be symmetric with left bottom)
+% 6) Saddle Right Top (should be symmetric with left top) 
+% 7) Saddle Left Bottom
+% 8) Saddle Left Top
+
+legendlabels = {'HB', 'HT', 'HR', 'HL', 'SRB', 'SRT', 'SLB', 'SLT'};
+maxF = 25;
+% number of pairs per body is 8, or alternatively, just the size of the
+% number of labels...
+sigma = 8;
+% let's see how busy this gets
+plotCableTensions(fOpt, sigma, maxF, legendlabels);
+
+% some size adjustments
+set(gca, 'FontSize', 16);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -1,7 +1,7 @@
 % plotCableTensions.m
 % Copyright Andrew P. Sabelhaus 2019
 
-function plotCableTensions(fOpt, sigma, maxF, labels)
+function hdls = plotCableTensions(fOpt, sigma, maxF, labels)
 %% plotCableTensions
 %   A helper function that plots a set of cable tensions over time.
 %
@@ -19,10 +19,15 @@ function plotCableTensions(fOpt, sigma, maxF, labels)
 %           set. Example, for a spine, these might be "top", "saddle left",
 %           etc.
 %
+%       hdls = a vector of handles to all the plotted data.   
+%
 %   Outputs: none.
 
 
 %% Setup the problem
+
+% Adding the gridLegend function here...
+addpath( genpath('gridLegend_v1.4') );
 
 % Some constants for the plotting.
 
@@ -57,7 +62,9 @@ set(gca, 'FontSize', fontsize);
 set(fig,'Position',[100,100,700,450]);
 % set(fig,'PaperPosition',[1,1,5.8,3.5]);
 % Annotate the plot
-title('Tensegrity ISO Cable Tensions');
+% title('Tensegrity ISO Cable Tensions');
+% title('Inverse Statics Opt. Cable Tensions');
+title('Inverse Statics Opt. Cable Tensions: Quadruped');
 ylabel('Force (N)');
 xlabel('Timestep (Pose)');
 % legend('Test (Computer Vision)', 'Predicted State', 'Location', 'Best');
@@ -65,6 +72,9 @@ xlabel('Timestep (Pose)');
 % Need an x-axis
 T = size(fOpt, 2);
 t = 1:T;
+
+% Save the handles to all the data.
+hdls = [];
 
 %% Plot per set of cables
 for i=1:numPairs
@@ -80,22 +90,41 @@ for i=1:numPairs
         % and the index to grab from within fOpt is
         cable_ik = sigma*(i-1) + k;
         % so finally, plot it.
-        plot(t, fOpt(cable_ik, :), 'Color', color_i, 'Marker', marker_ik, ...
+        hdls(end+1) = plot(t, fOpt(cable_ik, :), 'Color', color_i, 'Marker', marker_ik, ...
             'MarkerSize', markerSize, 'LineWidth', lineWidth, 'LineStyle', 'none');
     end
 end
 
 %% Adjust the plot
 
+% some manual hacks for the plot... for the RA-L paper.
+% TO-DO: add arguments or return handles somehow!!
+
+% set(gca, 'FontSize', 16);
+
 ylim([-1, maxF]);
 xlim([1, T]);
-[~, objh] = legend(labels, 'Location', 'NE');
+% TO-DO: ADD LEGEND LOCATION AS AN ARGUMENT!!
+[~, objh] = legend(labels, 'Location', 'NW');
+
+% MANUAL HACK FOR 2D Spine
+% [~, objh] = legend(labels, 'FontSize', 14, 'Orientation', 'horizontal', 'Location', 'north');
+
+% ANOTHER MANUAL HACK FOR the 3D PLOTS... TO-DO, FIX THIS!!
+% numCol3d = 2;
+% legend_hdls = gridLegend(hdls(1:sigma), numCol3d, labels, 'TextColor', 'k', 'Location', 'NW');
+% child_legend_hdls = get(legend_hdls, 'children');
 
 % Adjust the properties of the legend lines
 linesh = findobj(objh, 'type', 'line');
+% linesh = findobj(child_legend_hdls, 'type', 'line')
 set(linesh, 'Color', 'k', 'LineStyle', 'none');
 
 % hold off;
+
+% % manually adjust the legend font size
+% texth = findobj(objh, 'type', 'Text');
+% set(texth, 'FontSize', 14);
 
 end
 
