@@ -654,7 +654,7 @@ end
 
 % Plot for reference
 rad = 0.005;
-labelsOn = 1;
+labelsOn = 0;
 
 % Initial pose
 plotTensegrity3d(C, x(:,1), y(:,1), z(:,1), s, rad, labelsOn);

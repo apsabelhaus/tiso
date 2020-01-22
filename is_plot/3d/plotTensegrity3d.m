@@ -180,8 +180,9 @@ for j=(s+1):(s+r)
 end
 
 %% Some labels
-title('Tensegrity Structure, 3D');
+% title('Tensegrity Structure, 3D');
 % title('Tensegrity Quadruped Robot');
+title('Tensegrity Quadruped Model');
 % xlabel('X Position (m)');
 % ylabel('Y Position (m)');
 % zlabel('Z Position (m)');
