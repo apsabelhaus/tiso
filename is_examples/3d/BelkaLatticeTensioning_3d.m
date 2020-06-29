@@ -38,8 +38,8 @@ end
 % Putting a higher pretension sometimes helps give consistent bounds on cables and
 % prevents too many with different forces.
 % qMin = 5;
-qMin = 25;
-% qMin = 40;
+% qMin = 25;
+qMin = 40;
 
 % Local frame for one rigid body (locations of nodes)
 
@@ -407,11 +407,15 @@ rotation = [0; 0; 0];
 x0 = 0;
 xf = be * (b-1);
 % total height of curved back, from neutral position: arbitrary. try...
+back_h = 0.0;
 % For lattice tensioning used on hardare Belka, Summer 2019
 % back_h = -0.02;
-% For exaggerated "cat" and "cow" poses
-back_h = 0.022;
+% For exaggerated "cat" and "cow" poses, the RA-L paper:
+% back_h = 0.022;
 % back_h = -0.022;
+% For hardware designs with exaggerated poses:
+% back_h = -0.03;
+% back_h = 0.03;
 
 xi = trajArcX_3d(x0, xf, back_h, b);
 
@@ -558,8 +562,9 @@ if saveResults
     hdr{end+1} = 'Timestamp:';
     hdr{end+1} = startTimeString;
     hdr{end+1} = 'Pose of the robot:';
-%     hdr{end+1} = 'ARCHED BACK';
-%     hdr{end+1} = 'STRAIGHT BACK';
+%     hdr{end+1} = 'ARCHED BACK - CAT';
+%     hdr{end+1} = 'ARCHED BACK - COW';
+    hdr{end+1} = 'STRAIGHT BACK';
     hdr{end+1} = 'Minimum force density (pretensioning) in N/m:';
     hdr{end+1} = num2str(qMin);
     hdr{end+1} = '';
