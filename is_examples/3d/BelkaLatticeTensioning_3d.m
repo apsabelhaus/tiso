@@ -39,7 +39,10 @@ end
 % prevents too many with different forces.
 % qMin = 5;
 % qMin = 25;
-qMin = 40;
+% qMin = 40;
+
+% For artificially tensioning the robot in NTRT for walking gait purposes
+qMin = 200;
 
 % Local frame for one rigid body (locations of nodes)
 
@@ -407,7 +410,7 @@ rotation = [0; 0; 0];
 x0 = 0;
 xf = be * (b-1);
 % total height of curved back, from neutral position: arbitrary. try...
-back_h = 0.0;
+% back_h = 0.0;
 % For lattice tensioning used on hardare Belka, Summer 2019
 % back_h = -0.02;
 % For exaggerated "cat" and "cow" poses, the RA-L paper:
@@ -415,13 +418,23 @@ back_h = 0.0;
 % back_h = -0.022;
 % For hardware designs with exaggerated poses:
 % back_h = -0.03;
-% back_h = 0.03;
+back_h = 0.03;
 
 xi = trajArcX_3d(x0, xf, back_h, b);
 
 if debugging >= 2
     xi
 end
+
+% A little helper to get the coordinates for comparing to hardware:
+disp('Coordinates of vertebrae in x,z:')
+for i=1:b
+    disp(i)
+    % in cm
+    disp(xi((i-1)*6 + 1) * 100);
+    disp(xi((i-1)*6 + 3) * 100);
+end
+
 
 %% Calculations for the inputs to the core inverse statics library
 
@@ -454,7 +467,7 @@ z = coord(3, :)';
 
 % Plot for reference
 rad = 0.005;
-labelsOn = 0;
+labelsOn = 1;
 plotTensegrity3d(C, x, y, z, s, rad, labelsOn);
 
 % Calculate the external reaction forces at the feet.
